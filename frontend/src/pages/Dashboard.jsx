@@ -1,30 +1,33 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Logo from "../assets/logo.svg";
-import { 
-  Upload, 
-  Folder, 
-  FileText, 
-  Settings, 
-  Search, 
-  MoreVertical,
-  Home,
-  Clock,
-  Star,
-  Trash2,
-  Users,
-  HardDrive,
-  Download,
-  Share2
-} from 'lucide-react';
+import { Upload, Folder, FileText, Settings, Search, MoreVertical, Home, Clock, Star, Trash2, Users, HardDrive, Download, Share2 } from 'lucide-react';
 import { api } from '../api';
 
 export default function Dashboard() {
+    const navigate = useNavigate();
+    const [user, setUser] = useState(null);
     const [activeMenu, setActiveMenu] = useState(null);
     const [files, setFiles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [storageStats, setStorageStats] = useState({ total_files: 0, total_mb: 0 });
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
+
+    // Fetch user data when component loads
+    useEffect(() => {
+    const fetchUserData = async () => {
+        // FAKE DATA FOR TESTING - Remove when backend is ready!
+        setUser({
+            name: "Omojo Imadi",
+            email: "omojoimadi711@gmail.com",
+            storage_used: 2684354560,
+            storage_quota: 10737418240
+        });
+    };
+
+    fetchUserData();
+}, [navigate]);
 
     // Load files when component mounts
     useEffect(() => {
@@ -130,6 +133,22 @@ export default function Dashboard() {
     // Calculate storage percentage
     const storagePercentage = (storageStats.total_mb / 10240) * 100; // Assuming 10GB limit
 
+    // Show loading while fetching user data
+    if (!user && loading) {
+        return (
+            <div style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                height: "100vh",
+                fontSize: "1.2rem",
+                color: "#666"
+            }}>
+                Loading...
+            </div>
+        );
+    }
+
     return (
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", height: "100vh", backgroundColor: "#f5f5f5", fontFamily: "system-ui, -apple-system, sans-serif" }}>
             {/* Sidebar */}
@@ -159,18 +178,7 @@ export default function Dashboard() {
                     style={{ display: 'none' }}
                 />
                 <button 
-                    onClick={(e) => {
-    console.log('Button clicked!');
-    console.log('uploading state:', uploading);
-    console.log('fileInputRef:', fileInputRef);
-    console.log('fileInputRef.current:', fileInputRef.current);
-    if (fileInputRef.current) {
-        console.log('Clicking file input...');
-        fileInputRef.current.click();
-    } else {
-        console.log('ERROR: fileInputRef.current is null!');
-    }
-}}
+                    onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                     style={{
                         backgroundColor: uploading ? "#9CA3AF" : "#4F46E5",
@@ -323,20 +331,44 @@ export default function Dashboard() {
                             fontWeight: 600,
                             fontSize: "0.9rem"
                         }}>
-                            U
+                            {user?.name?.charAt(0).toUpperCase() || "U"}
                         </div>
                     </div>
                 </div>
 
                 {/* Content Area */}
                 <div style={{ flexGrow: 1, overflow: "auto", padding: "32px" }}>
-                    {/* Page Header */}
-                    <div style={{ marginBottom: "24px" }}>
-                        <h1 style={{ fontSize: "1.5rem", fontWeight: 600, margin: "0 0 4px 0" }}>My Drive</h1>
-                        <p style={{ fontSize: "0.875rem", color: "#666", margin: 0 }}>
-                            {loading ? 'Loading...' : `${files.length} items`}
+                    {/* Page Header with Welcome Message */}
+                    <div style={{ marginBottom: "32px" }}>
+                        <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: "0 0 8px 0" }}>
+                            Welcome back, {user?.name || "User"}!
+                        </h1>
+                        <p style={{ fontSize: "0.95rem", color: "#666", margin: "0 0 16px 0" }}>
+                            {user?.email}
                         </p>
+                    <div style={{ 
+                        padding: "16px", 
+                        backgroundColor: "#f0f9ff", 
+                        borderRadius: "8px",
+                        border: "1px solid #bfdbfe",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "16px"
+                    }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <FileText size={18} color="#1e40af" />
+                        <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
+                            {files.length} files
+                        </span>
                     </div>
+                <div style={{ width: "1px", height: "16px", backgroundColor: "#bfdbfe" }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <HardDrive size={18} color="#1e40af" />
+                        <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
+                            {storageStats.total_mb.toFixed(2)} MB of 10 GB used
+                        </span>
+                    </div>
+                </div>
 
                     {loading ? (
                         <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
@@ -353,7 +385,7 @@ export default function Dashboard() {
                                 <h2 style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999", margin: "0 0 16px 0", letterSpacing: "0.5px" }}>
                                     QUICK ACCESS
                                 </h2>
-                                <div style={{ display: "flex", gap: "16px" }}>
+                                <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                                     {files.slice(0, 3).map((file) => (
                                         <div
                                             key={file.id}
@@ -541,6 +573,7 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
+        </div>
         </div>
     );
 }
