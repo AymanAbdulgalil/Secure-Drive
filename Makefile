@@ -81,7 +81,6 @@ help:
 	@echo "  make shell-fastapi     - Open bash in fastapi container"
 	@echo "  make shell-postgres    - Open psql in postgres container"
 	@echo "  make clean             - Stop & remove volumes (deletes data!)"
-	@echo "  make nuke              - Nuclear option: remove everything"
 	@echo ""
 	@echo "Mode Selection:"
 	@echo "  All commands use dev mode by default"
@@ -237,16 +236,3 @@ clean:
 	else \
 		echo "CANCELLED: No changes made"; \
 	fi
-
-nuke:
-	@echo "🔥 Nuking everything..."
-	@docker compose down -v 2>/dev/null || true
-	@docker stop $$(docker ps -aq) 2>/dev/null || true
-	@docker rm $$(docker ps -aq) 2>/dev/null || true
-	@docker rmi $$(docker images -q) --force 2>/dev/null || true
-	@docker volume rm $$(docker volume ls -q) 2>/dev/null || true
-	@docker network prune -f 2>/dev/null || true
-	@docker builder prune -a -f 2>/dev/null || true
-	@docker buildx prune -a -f 2>/dev/null || true
-	@docker system prune -a --volumes -f 2>/dev/null || true
-	@echo "✅ Everything nuked!"
