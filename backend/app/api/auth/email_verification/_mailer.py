@@ -192,7 +192,6 @@ def _build_message(
 
 def send_email(
     *,
-    user_id: str,
     recipient: str,
     ver: int,
     signed_token: str,
@@ -203,7 +202,6 @@ def send_email(
 
     Parameters
     ----------
-    user_id      : User ID associated with the token.
     recipient    : Recipient email address (e.g. "address@example.com").
     ver          : Verification version associated with token.
     signed_token : Unique signed verification token appended to the verification endpoint.
@@ -220,8 +218,6 @@ def send_email(
     """
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError("timeout must be a positive integer.")
-    if not isinstance(user_id, str) or not user_id.strip():
-        raise ValueError("user_id must be a non-empty string.")
     if not isinstance(ver, int) or ver < 0:
         raise ValueError("ver must be a non-negative integer.")
     if not isinstance(signed_token, str) or not signed_token.strip():
@@ -232,7 +228,7 @@ def send_email(
     sender_addr = _validate_address(config.SMTP_ADDRESS, "sender")
     recipient_addr = _validate_address(recipient, "recipient")
 
-    verify_url = f"{config.ENDPOINT}?user_id={user_id}&ver={ver}&signed_token={signed_token}"
+    verify_url = f"{config.ENDPOINT}/{signed_token}"
 
     text_body = config.TEXT_BODY_TEMPLATE.replace(
         config.URL_PLACEHOLDER, verify_url

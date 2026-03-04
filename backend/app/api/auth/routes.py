@@ -8,19 +8,23 @@ from .email_verification import (
     validate_token,
 )
 from ...repositories.database import db
-from ...repositories.users import create_user, mark_verified, get_user_by_email
+from ...repositories.users import (
+    create_user,
+    mark_verified,
+    get_user_by_email,
+    record_login,
+)
 from ...models.user import (
     UserRegister,
     UserLogin,
     UserResponse,
 )
-from ...models.token import LoginResponse, LoginResponse, RefreshTokenRequest
+from ...models.token import LoginResponse, LoginResponse
 from .utils import (
     hash_password,
     verify_password,
     create_access_token,
     # create_refresh_token,
-    decode_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -51,24 +55,23 @@ async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(d
     # Attempt to send verification email after the user is persisted
     try:
         send_email(
-            user_id=str(new_user["user_id"]),
             recipient=new_user["email"],
             ver=int(new_user["verification_version"]),
             signed_token=create_token(
                 new_user["user_id"],
-                new_user["verification_version"],
             ),
         )
     except Exception as exc:
         # Email verification link was not sent — don't roll back, just warn the caller
-        print(f"Warning: Failed to send verification email to {new_user['email']}: {exc}")
+        print(
+            f"Warning: Failed to send verification email to {new_user['email']}: {exc}"
+        )
         raise HTTPException(
             status_code=status.HTTP_201_CREATED,
             detail="Failed to send verification email: " + exc.args[0],
         )
 
     return UserResponse(
-        user_id=new_user["user_id"],
         name=new_user["name"],
         email=new_user["email"],
         created_at=new_user["created_at"],
@@ -77,20 +80,15 @@ async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(d
     )
 
 
-@router.get("/verify", status_code=status.HTTP_200_OK)
+@router.get("/verify/{signed_token}", status_code=status.HTTP_200_OK)
 async def verify_email(
-    user_id: str,
-    ver: int,
     signed_token: str,
     conn: asyncpg.Connection = Depends(db),
 ):
-    verification_result = validate_token(
-        signed_token=signed_token, user_id=user_id, ver=ver
-    )
+    verification_result = validate_token(signed_token=signed_token)
     await mark_verified(
         conn=conn,
         user_id=verification_result.user_id,
-        expected_version=verification_result.record_version,
     )
 
     return {"detail": "Email verified successfully."}
@@ -109,14 +107,14 @@ async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(db)):
             detail="Incorrect email or password",
         )
 
-    if not user.verified:  # type: ignore
+    if not user["verified"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. Please check your inbox for verification instructions.",
         )
 
     # Update last login
-    user.last_login = datetime.now(timezone.utc)  # type: ignore
+    await record_login(conn=conn, user_id=user["user_id"])
 
     # Create tokens
     access_token, exp = create_access_token(str(user["user_id"]))

@@ -55,7 +55,6 @@ _DEFAULT_TTL_SECONDS = 12 * 60 * 60  # 12 hours
 
 class _TokenPayload(TypedDict):
     sub: str  # user UUID
-    ver: int  # user record version
     exp: int  # expiry (epoch seconds)
     typ: str  # token type
 
@@ -79,11 +78,6 @@ def _b64url_decode(s: str) -> bytes:
 def _sign(secret: bytes, message: str) -> str:
     sig = hmac.HMAC(secret, message.encode("utf-8"), hashlib.sha256).digest()
     return _b64url_encode(sig)
-
-
-def _hash_email(secret: bytes, email: str) -> str:
-    normalised = email.strip().lower()
-    return hmac.HMAC(secret, normalised.encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def _constant_time_compare(a: str, b: str) -> bool:
@@ -122,7 +116,6 @@ def _decode_and_verify_signature(secret: bytes, token: str) -> _TokenPayload:
         raw = json.loads(_b64url_decode(payload_b64))
         return _TokenPayload(
             sub=str(raw["sub"]),
-            ver=int(raw["ver"]),
             exp=int(raw["exp"]),
             typ=str(raw["typ"]),
         )
@@ -142,20 +135,9 @@ def _check_type(payload: _TokenPayload) -> None:
 
 def _check_expiry(payload: _TokenPayload) -> None:
     if int(time.time()) >= payload["exp"]:
+        print(f"Token expired at {payload['exp']} (current time: {int(time.time())})")
+        print("Payload:", payload)
         raise TokenExpiredError("Token has expired.")
-
-
-def _check_user(payload: _TokenPayload, user_id: str) -> None:
-    if not _constant_time_compare(payload["sub"], user_id):
-        raise TokenSubjectError("Token subject does not match the provided user ID.")
-
-
-def _check_version(payload: _TokenPayload, record_version: int) -> None:
-    if payload["ver"] != record_version:
-        raise TokenVersionError(
-            f"Token record version {payload['ver']} does not match "
-            f"current version {record_version}. Token has been invalidated."
-        )
 
 
 # ---------------------------------------------------------------------------
@@ -165,8 +147,7 @@ def _check_version(payload: _TokenPayload, record_version: int) -> None:
 
 def create_token(
     user_id: str,
-    record_version: int,
-    ttl_seconds: int = _DEFAULT_TTL_SECONDS,
+    ttl_seconds: int = _DEFAULT_TTL_SECONDS, 
 ) -> str:
     """Create and return a signed email verification token for the given user details."""
     secret_key = os.getenv("JWT_SECRET_KEY", "")
@@ -175,17 +156,16 @@ def create_token(
     now = int(time.time())
     payload = _TokenPayload(
         sub=str(user_id),
-        ver=record_version,
         exp=now + ttl_seconds,
         typ=_TOKEN_TYPE,
     )
-    return _encode_token(key, payload)
+    signed_token = _encode_token(key, payload)
+    print(f"Created token: {signed_token} with payload: {payload}")
+    return signed_token
 
 
 def validate_token(
     signed_token: str,
-    user_id: str,
-    ver: int,
 ) -> VerificationResult:
     """Validate the token and return the decoded payload if valid, otherwise raise an error."""
     secret_key = os.getenv("JWT_SECRET_KEY", "")
@@ -193,12 +173,13 @@ def validate_token(
     _validate_secret(key)
     payload = _decode_and_verify_signature(key, signed_token)
     _check_type(payload)
-    _check_expiry(payload)
-    _check_user(payload, user_id)
-    _check_version(payload, ver)
+    try:
+        _check_expiry(payload)
+    except TokenExpiredError:
+        print(f"token: {signed_token}")
+        raise TokenExpiredError("Token has expired.")
 
     return VerificationResult(
         user_id=payload["sub"],
         expires_at=payload["exp"],
-        record_version=payload["ver"],
     )

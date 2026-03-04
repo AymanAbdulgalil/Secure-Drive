@@ -47,6 +47,18 @@ This project aims to explore “high-security by default” cloud storage concep
 
 These are design targets and may change as the architecture evolves.
 
+## How to run
+
+After cloning the repository, just run `make dev` for development mode or `make prod` for production.
+
+Make sure you set all the environemnt variables in the respective `.env` file, `.env.dev` or `.env.prod`. See `.env.example` to see all environment variables.
+
+If you don't have a domain you can put in BASE_URL environment variables, use any free tunneling service like cloudflared. Just make sure the tunneling service is listening on the correct port, either the frontend (development mode) or the backend (production mode).
+
+If you choose to use google services for SMTP, make sure you go to the mailer account settings, issue an app password, then use that password for the SMTP.
+
+You can also set the desired ports for the services in the `.env` file.
+
 ## License
 
 MIT

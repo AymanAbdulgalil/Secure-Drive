@@ -32,7 +32,8 @@ class StorageQuotaExceededError(Exception):
 
 
 def _assert_found(record: Record | None, identifier: Any) -> Record:
-    if record is None:
+    if not record:
+        print(f"Record not found for identifier: {identifier!r}\n Record: {record!r}")
         raise UserNotFoundError(f"No user found for identifier: {identifier!r}")
     if not isinstance(record, asyncpg.Record):
         raise TypeError(f"Expected asyncpg.Record, got {type(record)}")
@@ -69,14 +70,16 @@ async def create_user(
 
     sql = """
         INSERT INTO users (user_id, email, password_hash, name, storage_quota, verified, is_active)
-        VALUES ($1, $2, $3, $4, $5, FALSE, FALSE)
+        VALUES ($1, $2, $3, $4, $5, FALSE, TRUE)
     """
 
     async with conn.transaction():
         await conn.execute(sql, uid, email, password_hash, name, storage_quota)
         record = await get_user_by_id(conn=conn, user_id=uid)
 
-    return _assert_found(record, email)
+    if _assert_found(record, email):
+        print(f"Created user {uid} with email {email}")
+    return record
 
 
 # ---------------------------------------------------------------------------
@@ -277,7 +280,6 @@ async def mark_verified(
     *,
     conn: asyncpg.Connection,
     user_id: str | uuid.UUID,
-    expected_version: int,
 ) -> Record:
     """
     Set verified = TRUE only when the token version matches.
@@ -291,14 +293,12 @@ async def mark_verified(
         UPDATE users
         SET verified = TRUE
         WHERE user_id              = $1
-          AND verification_version = $2
           AND is_active            = TRUE
         RETURNING *
         """,
         id,
-        expected_version,
     )
-    return _assert_found(row, f"{id}@v{expected_version}")
+    return _assert_found(row, f"{id}")
 
 
 # ---------------------------------------------------------------------------

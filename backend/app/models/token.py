@@ -15,4 +15,3 @@ class RefreshTokenRequest(BaseModel):
 class VerificationResult(BaseModel):
     user_id: str
     expires_at: int
-    record_version: int
