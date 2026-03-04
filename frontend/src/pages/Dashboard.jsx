@@ -16,18 +16,39 @@ export default function Dashboard() {
 
     // Fetch user data when component loads
     useEffect(() => {
-    const fetchUserData = async () => {
-        // FAKE DATA FOR TESTING - Remove when backend is ready!
-        setUser({
-            name: "Omojo Imadi",
-            email: "omojoimadi711@gmail.com",
-            storage_used: 2684354560,
-            storage_quota: 10737418240
-        });
-    };
+        const fetchUserData = async () => {
+            const token = localStorage.getItem("access_token");
+            
+            // If no token, redirect to login
+            if (!token) {
+                navigate("/login");
+                return;
+            }
 
-    fetchUserData();
-}, [navigate]);
+            try {
+                const response = await fetch("http://localhost:8000/api/v1/auth/me", {
+                    headers: {
+                        "Authorization": `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setUser(data);
+                } else {
+                    // Token invalid, redirect to login
+                    localStorage.removeItem("access_token");
+                    localStorage.removeItem("refresh_token");
+                    navigate("/login");
+                }
+            } catch (error) {
+                console.error("Failed to fetch user data:", error);
+                // Backend might be down - stay on page but log error
+            }
+        };
+
+        fetchUserData();
+    }, [navigate]);
 
     // Load files when component mounts
     useEffect(() => {
@@ -77,7 +98,6 @@ export default function Dashboard() {
         try {
             setUploading(true);
             await api.uploadFile(selectedFile);
-            // Refresh file list and storage stats
             await loadFiles();
             await loadStorageStats();
             alert('File uploaded successfully!');
@@ -86,18 +106,16 @@ export default function Dashboard() {
             alert('Failed to upload file. Please try again.');
         } finally {
             setUploading(false);
-            // Reset file input
             event.target.value = '';
         }
     }
 
-    // Helper: Get file type from filename
+    // Helper functions
     function getFileType(filename) {
         const ext = filename.split('.').pop().toUpperCase();
         return ext || 'FILE';
     }
 
-    // Helper: Format bytes to readable size
     function formatBytes(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
@@ -106,7 +124,6 @@ export default function Dashboard() {
         return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
     }
 
-    // Helper: Format date to relative time
     function formatDate(dateString) {
         const date = new Date(dateString);
         const now = new Date();
@@ -130,8 +147,7 @@ export default function Dashboard() {
         { icon: Trash2, text: "Trash", active: false },
     ];
 
-    // Calculate storage percentage
-    const storagePercentage = (storageStats.total_mb / 10240) * 100; // Assuming 10GB limit
+    const storagePercentage = (storageStats.total_mb / 10240) * 100;
 
     // Show loading while fetching user data
     if (!user && loading) {
@@ -160,7 +176,6 @@ export default function Dashboard() {
                 flexDirection: "column",
                 padding: "16px"
             }}>
-                {/* Logo */}
                 <div style={{ marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
                     <img 
                         src={Logo} 
@@ -170,7 +185,6 @@ export default function Dashboard() {
                     <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>Secure Drive</span>
                 </div>
 
-                {/* Upload Button */}
                 <input
                     type="file"
                     ref={fileInputRef}
@@ -207,7 +221,6 @@ export default function Dashboard() {
                     {uploading ? 'Uploading...' : 'Upload'}
                 </button>
 
-                {/* Navigation Items */}
                 <div style={{ flexGrow: 1 }}>
                     {sidebarItems.map((item, index) => (
                         <div
@@ -238,7 +251,6 @@ export default function Dashboard() {
                     ))}
                 </div>
 
-                {/* Storage Info */}
                 <div style={{
                     marginTop: "auto",
                     padding: "16px",
@@ -271,7 +283,6 @@ export default function Dashboard() {
 
             {/* Main Content */}
             <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
-                {/* Top Bar */}
                 <div style={{
                     backgroundColor: "#ffffff",
                     borderBottom: "1px solid #e0e0e0",
@@ -280,7 +291,6 @@ export default function Dashboard() {
                     alignItems: "center",
                     justifyContent: "space-between"
                 }}>
-                    {/* Search Bar */}
                     <div style={{
                         backgroundColor: "#f5f5f5",
                         borderRadius: "24px",
@@ -304,7 +314,6 @@ export default function Dashboard() {
                         />
                     </div>
 
-                    {/* Right Side */}
                     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <button style={{
                             width: "40px",
@@ -336,9 +345,7 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Content Area */}
                 <div style={{ flexGrow: 1, overflow: "auto", padding: "32px" }}>
-                    {/* Page Header with Welcome Message */}
                     <div style={{ marginBottom: "32px" }}>
                         <h1 style={{ fontSize: "2rem", fontWeight: 700, margin: "0 0 8px 0" }}>
                             Welcome back, {user?.name || "User"}!
@@ -346,29 +353,30 @@ export default function Dashboard() {
                         <p style={{ fontSize: "0.95rem", color: "#666", margin: "0 0 16px 0" }}>
                             {user?.email}
                         </p>
-                    <div style={{ 
-                        padding: "16px", 
-                        backgroundColor: "#f0f9ff", 
-                        borderRadius: "8px",
-                        border: "1px solid #bfdbfe",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "16px"
-                    }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <FileText size={18} color="#1e40af" />
-                        <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
-                            {files.length} files
-                        </span>
+                        <div style={{ 
+                            padding: "16px", 
+                            backgroundColor: "#f0f9ff", 
+                            borderRadius: "8px",
+                            border: "1px solid #bfdbfe",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "16px"
+                        }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <FileText size={18} color="#1e40af" />
+                                <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
+                                    {files.length} files
+                                </span>
+                            </div>
+                            <div style={{ width: "1px", height: "16px", backgroundColor: "#bfdbfe" }} />
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                                <HardDrive size={18} color="#1e40af" />
+                                <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
+                                    {storageStats.total_mb.toFixed(2)} MB of 10 GB used
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                <div style={{ width: "1px", height: "16px", backgroundColor: "#bfdbfe" }} />
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <HardDrive size={18} color="#1e40af" />
-                        <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
-                            {storageStats.total_mb.toFixed(2)} MB of 10 GB used
-                        </span>
-                    </div>
-                </div>
 
                     {loading ? (
                         <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
@@ -380,7 +388,6 @@ export default function Dashboard() {
                         </div>
                     ) : (
                         <>
-                            {/* Quick Access */}
                             <div style={{ marginBottom: "32px" }}>
                                 <h2 style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999", margin: "0 0 16px 0", letterSpacing: "0.5px" }}>
                                     QUICK ACCESS
@@ -434,13 +441,11 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            {/* Files List */}
                             <div>
                                 <h2 style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999", margin: "0 0 16px 0", letterSpacing: "0.5px" }}>
                                     FILES
                                 </h2>
                                 <div style={{ backgroundColor: "white", borderRadius: "8px", overflow: "hidden" }}>
-                                    {/* Table Header */}
                                     <div style={{
                                         display: "grid",
                                         gridTemplateColumns: "2fr 1fr 1fr 100px",
@@ -454,7 +459,6 @@ export default function Dashboard() {
                                         <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999" }}>SIZE</span>
                                     </div>
 
-                                    {/* Table Rows */}
                                     {files.map((file, index) => (
                                         <div
                                             key={file.id}
@@ -573,7 +577,6 @@ export default function Dashboard() {
                     )}
                 </div>
             </div>
-        </div>
         </div>
     );
 }
