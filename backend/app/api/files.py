@@ -37,7 +37,7 @@ _ALLOWED_SORT = {"created_at", "current_name", "size_bytes", "updated_at"}
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
-def sanitize_filename(name: str) -> str:
+def _sanitize_filename(name: str) -> str:
     """Remove dangerous characters from a filename."""
     if not name:
         return "unnamed"
@@ -57,7 +57,7 @@ def _normalize_folder(raw: str | None) -> str:
     """
     if not raw or not raw.strip():
         return "/"
-    clean = sanitize_filename(raw.strip("/"))
+    clean = _sanitize_filename(raw.strip("/"))
     return f"/{clean}"
 
 
@@ -101,7 +101,7 @@ async def upload_file(
     file_uuid = uuid.uuid4()
     file_key = make_file_key(user_id=owner_id, file_uuid=file_uuid)
     folder_path = _normalize_folder(folder)
-    current_name = sanitize_filename(logical_name or file.filename or "unnamed")
+    current_name = _sanitize_filename(logical_name or file.filename or "unnamed")
 
     with NamedTemporaryFile(delete=True) as tmp:
         h = hashlib.sha256()
@@ -305,7 +305,7 @@ async def download_file(
             obj.release_conn()
 
     headers = {
-        "Content-Disposition": f'attachment; filename="{sanitize_filename(meta["current_name"])}"',
+        "Content-Disposition": f'attachment; filename="{_sanitize_filename(meta["current_name"])}"',
         "X-Content-SHA256": meta["sha256_hex"],
     }
     return StreamingResponse(
@@ -382,7 +382,7 @@ async def update_file_metadata(
 
     # Apply rename if requested
     if name is not None:
-        updated = await rename_file(conn, file_uuid, sanitize_filename(name))
+        updated = await rename_file(conn, file_uuid, _sanitize_filename(name))
         if updated:
             meta = updated
 

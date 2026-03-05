@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 import asyncpg
+from fastapi.responses import RedirectResponse
 
 from .email_verification import (
     send_email,
@@ -56,7 +56,6 @@ async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(d
     try:
         send_email(
             recipient=new_user["email"],
-            ver=int(new_user["verification_version"]),
             signed_token=create_token(
                 new_user["user_id"],
             ),
@@ -80,7 +79,31 @@ async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(d
     )
 
 
-@router.get("/verify/{signed_token}", status_code=status.HTTP_200_OK)
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+async def resend_verification(
+    email: str, conn: asyncpg.Connection = Depends(db)
+):
+    # Find user by email
+    user: asyncpg.Record = await get_user_by_email(conn=conn, email=email)
+
+    # Attempt to send verification email after the user is persisted
+    try:
+        send_email(
+            recipient=user["email"],
+            signed_token=create_token(
+                user["user_id"],
+            ),
+        )
+    except Exception as exc:
+        # Email verification link was not sent — don't roll back, just warn the caller
+        print(f"Warning: Failed to send verification email to {user['email']}: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_201_CREATED,
+            detail="Failed to send verification email: " + exc.args[0],
+        )
+
+
+@router.get("/verify/{signed_token}")
 async def verify_email(
     signed_token: str,
     conn: asyncpg.Connection = Depends(db),
@@ -91,7 +114,7 @@ async def verify_email(
         user_id=verification_result.user_id,
     )
 
-    return {"detail": "Email verified successfully."}
+    return RedirectResponse(url="/login", status_code=status.HTTP_301_MOVED_PERMANENTLY)
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)

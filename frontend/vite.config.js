@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
     // Posted by ansmonjol, modified by community. See post 'Timeline' for change history
     // Retrieved 2026-03-02, License - CC BY-SA 4.0
     server: {
-      allowedHosts: [env.VITE_BASE_URL],
+      allowedHosts: [env.VITE_DOMAIN],
     },
   }
 })

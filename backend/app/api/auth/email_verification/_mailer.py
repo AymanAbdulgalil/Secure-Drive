@@ -193,7 +193,6 @@ def _build_message(
 def send_email(
     *,
     recipient: str,
-    ver: int,
     signed_token: str,
     timeout: int = 30,
 ) -> None:
@@ -203,7 +202,6 @@ def send_email(
     Parameters
     ----------
     recipient    : Recipient email address (e.g. "address@example.com").
-    ver          : Verification version associated with token.
     signed_token : Unique signed verification token appended to the verification endpoint.
     timeout      : Socket timeout in seconds (default 30).
 
@@ -218,8 +216,6 @@ def send_email(
     """
     if not isinstance(timeout, int) or timeout <= 0:
         raise ValueError("timeout must be a positive integer.")
-    if not isinstance(ver, int) or ver < 0:
-        raise ValueError("ver must be a non-negative integer.")
     if not isinstance(signed_token, str) or not signed_token.strip():
         raise ValueError("signed_token must be a non-empty string.")
 
