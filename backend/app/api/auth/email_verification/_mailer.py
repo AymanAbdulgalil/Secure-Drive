@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, parseaddr
+from urllib.parse import quote
 
 
 
@@ -129,8 +130,8 @@ def _load_config() -> _EmailConfig:
         raise MailerError(f"Error loading email body template: {exc}") from exc
 
     return _EmailConfig(
-        # BASE_URL=os.getenv("BASE_URL", ""),
-        BASE_URL="http://localhost:8000",
+        BASE_URL=os.getenv("BASE_URL", ""),
+        # BASE_URL="http://localhost:8000",
         SMTP_HOST=os.getenv("SMTP_HOST", ""),
         SMTP_PORT=_parse_smtp_port(),
         SMTP_USERNAME=os.getenv("SMTP_USERNAME", ""),
@@ -225,7 +226,7 @@ def send_email(
     sender_addr = _validate_address(config.SMTP_ADDRESS, "sender")
     recipient_addr = _validate_address(recipient, "recipient")
 
-    verify_url = f"{config.ENDPOINT}/{signed_token}"
+    verify_url = f"{config.ENDPOINT}/{quote(signed_token, safe='')}"
 
     text_body = config.TEXT_BODY_TEMPLATE.replace(
         config.URL_PLACEHOLDER, verify_url

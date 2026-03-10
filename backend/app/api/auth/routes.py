@@ -115,7 +115,7 @@ async def verify_email(
         user_id=verification_result.user_id,
     )
 
-    return HTMLResponse(content='<script>window.location.href="/login"</script>')
+    return HTMLResponse(content='<script>window.location.href="http://localhost:5173/login"</script>')
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
