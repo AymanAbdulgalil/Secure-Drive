@@ -133,20 +133,9 @@ function Signup() {
 
             const data = await response.json();
 
-            if (response.ok) {
-                setSuccess("Account created! Check your email to verify your account.");
-                // Clear form
-                setFormData({
-                    name: "",
-                    email: "",
-                    password: "",
-                    confirmPassword: ""
-                });
-                // Redirect to login after 3 seconds
-                setTimeout(() => {
-                    navigate("/login");
-                }, 3000);
-            } else {
+        if (response.ok) {
+            navigate("/verify-email", { state: { email: formData.email } });
+        } else {
                 setError(data.detail || "Signup failed. Please try again.");
             }
         } catch (err) {

@@ -1,7 +1,7 @@
 #!/bin/bash
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  -v postgres_app_password="'${POSTGRES_APP_PASSWORD}'" \
-  <<-EOSQL
+    -v postgres_app_password="'${POSTGRES_APP_PASSWORD}'" \
+    <<-EOSQL
 
     -- =============================================================
     -- Application database roles: secure_drive, secure_drive_audit_reader
