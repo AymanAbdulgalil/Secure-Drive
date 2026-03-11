@@ -7,7 +7,7 @@
 --                         'file_restored',
 --                         'file_renamed',
 --                         'file_moved',
---                         'content_type_changed',
+--                         'mime_type_changed',
 --                         'file_overwritten',
 --                         'ownership_transferred'
 --                     );
@@ -17,18 +17,17 @@
 -- files Metadata  (one row per stored file)
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE files (
-    file_id       UUID PRIMARY KEY,
+    file_id         UUID PRIMARY KEY,
     owner_id        UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
 
     -- Storage location
     bucket          TEXT NOT NULL,
     folder          TEXT NOT NULL DEFAULT '/',
-    file_key      TEXT NOT NULL UNIQUE,
 
     -- File identity
     original_name   TEXT NOT NULL,
     current_name    TEXT NOT NULL,
-    content_type    VARCHAR(255),
+    mime_type       VARCHAR(255) NOT NULL,
     size_bytes      BIGINT NOT NULL,
     sha256_hex      CHAR(64) NOT NULL,
 
@@ -103,7 +102,7 @@ CREATE TRIGGER trg_files_updated_at
 --         CHECK (action != 'file_uploaded' OR new_value IS NOT NULL),
 --     ADD CONSTRAINT chk_files_audit_mutation_has_both_values
 --         CHECK (
---             action NOT IN ('file_renamed', 'file_moved', 'content_type_changed',
+--             action NOT IN ('file_renamed', 'file_moved', 'mime_type_changed',
 --                            'file_overwritten', 'ownership_transferred')
 --             OR (old_value IS NOT NULL AND new_value IS NOT NULL)
 --         ),
