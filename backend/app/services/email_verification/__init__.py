@@ -13,7 +13,6 @@ Submodules and tamplates:
 from ._tokens import (
     create_token,
     validate_token,
-    VerificationResult,
 )
 
 from ._mailer import send_email
@@ -22,7 +21,6 @@ __all__ = [
     # Token functions and errors
     "create_token",
     "validate_token",
-    "VerificationResult",
     # Mailer functions and errors
     "send_email",
 ]

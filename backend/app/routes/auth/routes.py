@@ -2,16 +2,16 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
-from ...models.token import LoginResponse
-from ...database import get_db
-from ...queries.user import (
+from ...models.token import RefreshTokenResponse
+from .._common import get_db
+from ...database.user import (
     create_user,
     invalidate_access_tokens,
     mark_verified,
     get_user_by_email,
     record_login,
 )
-from .email_verification import (
+from ...services.email_verification import (
     send_email,
     create_token,
     validate_token,
@@ -112,13 +112,13 @@ async def verify_email(
     verification_result = validate_token(signed_token=signed_token)
     await mark_verified(
         conn=conn,
-        user_id=verification_result.user_id,
+        user_id=verification_result[0],
     )
 
     return HTMLResponse(content='<script>window.location.href="http://localhost:5173/login"</script>')
 
 
-@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+@router.post("/login", response_model=RefreshTokenResponse, status_code=status.HTTP_200_OK)
 async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(get_db)):
     # Find user by email
     user: asyncpg.Record = await get_user_by_email(conn=conn, email=credentials.email)
@@ -143,13 +143,13 @@ async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(get_d
     # Create tokens
     access_token, exp = create_access_token(str(user["user_id"]))
 
-    return LoginResponse(
+    return RefreshTokenResponse(
         access_token=access_token,
         expires_in=int(exp.timestamp()),
     )
 
 
-# @router.post("/refresh", response_model=LoginResponse)
+# @router.post("/refresh", response_model=RefreshTokenResponse)
 # async def refresh(
 #     token_data: RefreshTokenRequest, get_db: Annotated[Session, Depends(get_db)]
 # ):
@@ -204,7 +204,7 @@ async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(get_d
 #     get_db.add(new_refresh_token_record)
 #     get_db.commit()
 
-#     return LoginResponse(
+#     return RefreshTokenResponse(
 #         access_token=access_token,
 #         refresh_token=new_refresh_token,
 #         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,

@@ -7,7 +7,6 @@ import json
 import os
 import time
 from typing import TypedDict
-from ....models.token import VerificationResult
 from ....queries.exceptions import (
     TokenError,
     TokenTypeError,
@@ -143,7 +142,7 @@ def create_token(
 
 def validate_token(
     signed_token: str,
-) -> VerificationResult:
+) -> tuple[str, int]:
     """Validate the token and return the decoded payload if valid, otherwise raise an error."""
     secret_key = os.getenv("JWT_SECRET_KEY", "")
     key = secret_key.encode("utf-8")
@@ -156,7 +155,4 @@ def validate_token(
         print(f"token: {signed_token}")
         raise TokenExpiredError("Token has expired.")
 
-    return VerificationResult(
-        user_id=payload["sub"],
-        expires_at=payload["exp"],
-    )
+    return payload["sub"], payload["exp"]

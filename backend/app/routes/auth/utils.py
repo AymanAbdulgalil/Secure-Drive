@@ -7,8 +7,8 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 
 from ...models.user import UserResponse
-from ...database import get_db
-from ...queries.user import get_user_by_id
+from .._common import get_db
+from ...database.user import get_user_by_id
 
 # Configuration
 _SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "")

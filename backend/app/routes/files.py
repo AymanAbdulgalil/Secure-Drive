@@ -7,8 +7,8 @@ import asyncpg
 from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 
-from ..database import db, get_token
-from ..queries.file import (
+from ._common import get_db, get_token
+from ..database.file import (
     create_file,
     get_file_by_id,
     list_files_by_owner,
@@ -19,14 +19,7 @@ from ..queries.file import (
     count_files_by_owner,
     total_bytes_by_owner,
 )
-from ..queries.file._minio_client import (
-    put_bytes,
-    get_file_stream,
-    make_file_key,
-    delete_file as minio_delete_file,
-    settings,
-)
-from .auth.utils import decode_token
+from ..auth.utils import decode_token
 
 router = APIRouter(prefix="/files", tags=["files"])
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB
@@ -90,7 +83,7 @@ async def upload_file(
     folder: str | None = Form(None),
     logical_name: str | None = Form(None),
     file: UploadFile = File(...),
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Upload a file to object storage and record its metadata."""
@@ -157,7 +150,7 @@ async def list_files(
     sort_order: str = Query("desc", description="Sort order: asc or desc"),
     limit: int = Query(100, ge=1, le=1000, description="Max results"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """
@@ -219,7 +212,7 @@ async def list_files(
 
 @router.get("/folders")
 async def list_folders(
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Return the distinct folder paths that belong to the current user, with file counts."""
@@ -253,7 +246,7 @@ async def list_folders(
 
 @router.get("/stats")
 async def get_storage_stats(
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Return aggregate storage statistics for the current user."""
@@ -275,7 +268,7 @@ async def get_storage_stats(
 @router.get("/{file_id}")
 async def download_file(
     file_id: str,
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Stream a file download. The browser will trigger a Save dialog."""
@@ -319,7 +312,7 @@ async def download_file(
 @router.delete("/{file_id}", status_code=status.HTTP_200_OK)
 async def delete_file_endpoint(
     file_id: str,
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Delete a file from object storage and remove its database record."""
@@ -356,7 +349,7 @@ async def update_file_metadata(
     file_id: str,
     name: str | None = Form(None),
     folder: str | None = Form(None),
-    conn: asyncpg.Connection = Depends(db),
+    conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """

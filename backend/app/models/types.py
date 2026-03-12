@@ -3,6 +3,7 @@ from typing import Annotated
 from pathlib import PurePosixPath
 from pydantic import Field, TypeAdapter, EmailStr
 from pydantic.functional_validators import AfterValidator
+from pydantic.networks import IPvAnyAddress
 
 
 _BUCKET_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$")
