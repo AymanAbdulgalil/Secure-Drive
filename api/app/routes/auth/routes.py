@@ -1,4 +1,6 @@
-import asyncpg
+from __future__ import annotations
+
+from asyncpg import Record, Connection, UniqueViolationError
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
@@ -36,15 +38,15 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post(
     "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
 )
-async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(get_db)):
+async def register(user_data: UserRegister, conn: Connection = Depends(get_db)):
     try:
-        new_user: asyncpg.Record = await create_user(
+        new_user: Record = await create_user(
             conn=conn,
             email=user_data.email,
             password_hash=hash_password(user_data.password),
             name=user_data.name,
         )
-    except asyncpg.UniqueViolationError as exc:
+    except UniqueViolationError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already exists: " + exc.args[0],
@@ -83,9 +85,9 @@ async def register(user_data: UserRegister, conn: asyncpg.Connection = Depends(g
 
 
 @router.post("/resend-verification", status_code=status.HTTP_200_OK)
-async def resend_verification(email: str, conn: asyncpg.Connection = Depends(get_db)):
+async def resend_verification(email: str, conn: Connection = Depends(get_db)):
     # Find user by email
-    user: asyncpg.Record = await get_user_by_email(conn=conn, email=email)
+    user: Record = await get_user_by_email(conn=conn, email=email)
 
     # Attempt to send verification email after the user is persisted
     try:
@@ -107,7 +109,7 @@ async def resend_verification(email: str, conn: asyncpg.Connection = Depends(get
 @router.get("/verify/{signed_token}", status_code=status.HTTP_200_OK)
 async def verify_email(
     signed_token: str,
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: Connection = Depends(get_db),
 ):
     verification_result = validate_token(signed_token=signed_token)
     await mark_verified(
@@ -119,9 +121,9 @@ async def verify_email(
 
 
 @router.post("/login", response_model=RefreshTokenResponse, status_code=status.HTTP_200_OK)
-async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(get_db)):
+async def login(credentials: UserLogin, conn: Connection = Depends(get_db)):
     # Find user by email
-    user: asyncpg.Record = await get_user_by_email(conn=conn, email=credentials.email)
+    user: Record = await get_user_by_email(conn=conn, email=credentials.email)
 
     if not user or not verify_password(
         plain_password=credentials.password, hashed_password=str(user["password_hash"])
@@ -214,7 +216,7 @@ async def login(credentials: UserLogin, conn: asyncpg.Connection = Depends(get_d
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     current_user: str = Depends(get_current_user_id),
-    conn: asyncpg.Connection = Depends(get_db),
+    conn: Connection = Depends(get_db),
 ):
     """
     Logout by revoking all access tokens.

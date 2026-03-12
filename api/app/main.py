@@ -7,8 +7,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routes.files import router as files_router
 from .routes.auth import router as auth_router
+from .routes.files import router as files_router
 
 
 async def get_pool() -> Pool:

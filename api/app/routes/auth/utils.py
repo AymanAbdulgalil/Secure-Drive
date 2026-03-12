@@ -1,5 +1,6 @@
 import os
 import asyncpg
+from uuid import UUID
 from fastapi.security import OAuth2PasswordBearer
 import jwt, jwt.exceptions as JWTError
 from passlib.context import CryptContext
@@ -76,7 +77,7 @@ async def get_current_user(
     except JWTError:
         raise credentials_exception
 
-    user = await get_user_by_id(conn=conn, user_id=uuid)
+    user = await get_user_by_id(conn=conn, user_id=UUID(uuid))
     if user is None:
         raise credentials_exception
     
