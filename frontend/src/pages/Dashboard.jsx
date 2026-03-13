@@ -16,6 +16,8 @@ export default function Dashboard() {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef(null);
     const [showAccountMenu, setShowAccountMenu] = useState(false);
+    const [showConsentPrompt, setShowConsentPrompt] = useState(false);
+    const [reportSent, setReportSent] = useState(false);
 
     useEffect(() => {
         const fetchUserData = async () => {
@@ -145,7 +147,51 @@ export default function Dashboard() {
             </div>
         );
     }
+    function handleReportIssue() {
+    setShowConsentPrompt(true);
+}
 
+    function submitReport() {
+        const diagnostics = {
+            browser: navigator.userAgent,
+            os: navigator.platform,
+            screen: `${window.screen.width}x${window.screen.height}`,
+            url: window.location.href,
+            timestamp: new Date().toISOString(),
+            appVersion: "1.0.0"
+        };
+
+            const body = `
+        ## Bug Report
+
+        **URL**
+        ${diagnostics.url}
+
+        **Time**
+        ${diagnostics.timestamp}
+
+        **Browser**
+        ${diagnostics.browser}
+
+        **OS**
+        ${diagnostics.os}
+
+        **Screen**
+        ${diagnostics.screen}
+
+        **App Version**
+        ${diagnostics.appVersion}
+
+        **Description**
+        _Please describe what you were doing when the error occurred._
+        `.trim();
+
+        const githubUrl = `https://github.com/Ayman-Abdulgalil/cloud-storage/issues/new?title=Bug+Report&body=${encodeURIComponent(body)}&labels=bug`;
+
+        setShowConsentPrompt(false);
+        setReportSent(true);
+        window.open(githubUrl, "_blank");
+    }
     return (
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", height: "100vh", backgroundColor: "#f5f5f5", fontFamily: "system-ui, -apple-system, sans-serif" }}>
 
@@ -423,17 +469,77 @@ export default function Dashboard() {
                         <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
                             Loading files...
                         </div>
-                    ) : filesError ? (
+                        ) : filesError ? (
                         <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
                             <AlertTriangle size={32} color="#f59e0b" style={{ marginBottom: "8px" }} />
-                            <p style={{ fontSize: "0.875rem" }}>Something went wrong loading your files. Please try again.</p>
-                            <button
-                                onClick={() => { setFilesError(false); loadFiles(); }}
-                                style={{ marginTop: "8px", padding: "8px 16px", borderRadius: "8px", border: "1px solid #e0e0e0", cursor: "pointer", backgroundColor: "white" }}
-                            >
-                                Retry
-                            </button>
-                        </div>
+                            <p style={{ fontWeight: 600, fontSize: "1rem", color: "#333", margin: "0 0 8px 0" }}>Something went wrong</p>
+                            <p style={{ fontSize: "0.875rem", margin: "0 0 20px 0" }}>We couldn't load your files. Please try again.</p>
+                            <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                                <button
+                                    onClick={() => { setFilesError(false); loadFiles(); }}
+                                    style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #e0e0e0", cursor: "pointer", backgroundColor: "white", fontSize: "0.875rem" }}
+                                >
+                                    Retry
+                                </button>
+                                <button
+                                    onClick={handleReportIssue}
+                                    style={{ padding: "8px 20px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "#4F46E5", color: "white", fontSize: "0.875rem", fontWeight: 600 }}
+                                >
+                                    Report this issue
+                                </button>
+                            </div>
+
+                            {/* Consent Prompt */}
+                            {showConsentPrompt && (
+                                <div style={{
+                                    position: "fixed",
+                                    top: 0, left: 0, right: 0, bottom: 0,
+                                    backgroundColor: "rgba(0,0,0,0.4)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    zIndex: 200
+                                }}>
+                                    <div style={{
+                                        backgroundColor: "white",
+                                        borderRadius: "12px",
+                                        padding: "32px",
+                                        maxWidth: "420px",
+                                        width: "90%",
+                                        boxShadow: "0 8px 24px rgba(0,0,0,0.15)"
+                                    }}>
+                                        <h3 style={{ margin: "0 0 12px 0", fontSize: "1.1rem", color: "#1a1a2e" }}>Before we continue</h3>
+                                        <p style={{ fontSize: "0.875rem", color: "#666", margin: "0 0 20px 0", lineHeight: 1.6 }}>
+                                            To help us fix this issue, we'd like to collect some basic diagnostic info — your browser, OS, screen size, the current URL, and a timestamp. No personal files or account data will be collected.
+                                        </p>
+                                        <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
+                                            <button
+                                                onClick={() => setShowConsentPrompt(false)}
+                                                style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #e0e0e0", cursor: "pointer", backgroundColor: "white", fontSize: "0.875rem" }}
+                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
+                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}
+                                            >
+                                                Cancel
+                                            </button>
+                                            <button
+                                                onClick={submitReport}
+                                                style={{ padding: "8px 20px", borderRadius: "8px", border: "none", cursor: "pointer", backgroundColor: "#4F46E5", color: "white", fontSize: "0.875rem", fontWeight: 600 }}
+                                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#4338CA"}
+                                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#4F46E5"}
+                                            >
+                                                Yes, send report
+                                            </button>
+                                    </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {reportSent && (
+                                <p style={{ marginTop: "16px", fontSize: "0.8rem", color: "#4F46E5" }}>
+                                    Thanks! GitHub opened with a pre-filled report.
+                                </p>
+                            )}
+                        </div> 
                     ) : files.length === 0 ? (
                         <div style={{ textAlign: "center", padding: "40px", color: "#666" }}>
                             No files yet. Upload your first file!
