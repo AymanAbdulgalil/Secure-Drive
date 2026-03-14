@@ -44,6 +44,16 @@ export default function Dashboard() {
     }, [navigate]);
 
     useEffect(() => {
+    function handleClickOutside(e) {
+        if (!e.target.closest("[data-account-menu]")) {
+            setShowAccountMenu(false);
+        }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
         loadFiles();
         loadStorageStats();
     }, []);
@@ -193,20 +203,20 @@ export default function Dashboard() {
         window.open(githubUrl, "_blank");
     }
     return (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", height: "100vh", backgroundColor: "#f5f5f5", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", height: "100vh", backgroundColor: "#c9c6c6", fontFamily: "system-ui, -apple-system, sans-serif" }}>
 
             {/* Sidebar */}
             <div style={{
                 width: "260px",
-                backgroundColor: "#ffffff",
+                backgroundColor: "#c9c6c6",
                 borderRight: "1px solid #e0e0e0",
                 display: "flex",
                 flexDirection: "column",
                 padding: "16px"
             }}>
                 <div style={{ marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
-                    <img src={Logo} alt="Secure Drive logo" style={{ width: "32px", height: "32px" }} />
-                    <span style={{ fontSize: "1.1rem", fontWeight: 700 }}>Secure Drive</span>
+                    <img src={Logo} alt="Secure Drive logo" style={{ width: "42px", height: "42px" }} />
+                    <span style={{ fontSize: "1.5rem", fontWeight: 700 }}>Secure Drive</span>
                 </div>
 
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
@@ -249,11 +259,12 @@ export default function Dashboard() {
                                 borderRadius: "8px",
                                 cursor: "pointer",
                                 marginBottom: "4px",
-                                backgroundColor: item.active ? "#EEF2FF" : "transparent",
+                                border: item.active ? "1px solid #e0e0e0" : "1px solid transparent",
+                                backgroundColor: item.active ? "#e0e0e0" : "transparent",
                                 color: item.active ? "#4F46E5" : "#666"
                             }}
-                            onMouseOver={(e) => { if (!item.active) e.currentTarget.style.backgroundColor = "#f5f5f5"; }}
-                            onMouseOut={(e) => { if (!item.active) e.currentTarget.style.backgroundColor = "transparent"; }}
+                            onMouseOver={(e) => { if (!item.active) e.currentTarget.style.backgroundColor = "#f5f5f5"; e.currentTarget.style.borderColor = "#e0e0e0"; e.currentTarget.style.color = "#4F46E5"; e.currentTarget.querySelector("svg").style.stroke = "#4F46E5"; }}
+                            onMouseOut={(e) => { if (!item.active) e.currentTarget.style.backgroundColor = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = item.active ? "#4F46E5" : "#666"; e.currentTarget.querySelector("svg").style.stroke = item.active ? "#4F46E5" : "#666"; }}
                         >
                             <item.icon size={20} />
                             <span style={{ fontSize: "0.95rem", fontWeight: item.active ? 600 : 400 }}>
@@ -268,7 +279,7 @@ export default function Dashboard() {
                         <HardDrive size={16} color="#666" />
                         <span style={{ fontSize: "0.875rem", color: "#666" }}>Storage</span>
                     </div>
-                    <div style={{ width: "100%", height: "6px", backgroundColor: "#e0e0e0", borderRadius: "4px", marginBottom: "8px" }}>
+                    <div style={{ width: "100%", height: "6px", backgroundColor: "#c9c6c6", borderRadius: "4px", marginBottom: "8px" }}>
                         <div style={{ width: `${Math.min(storagePercentage, 100)}%`, height: "100%", backgroundColor: "#4F46E5", borderRadius: "4px" }} />
                     </div>
                     <span style={{ fontSize: "0.75rem", color: "#999" }}>
@@ -282,7 +293,7 @@ export default function Dashboard() {
 
                 {/* Top Bar */}
                 <div style={{
-                    backgroundColor: "#ffffff",
+                    backgroundColor: "#c9c6c6",
                     borderBottom: "1px solid #e0e0e0",
                     padding: "16px 24px",
                     display: "flex",
@@ -324,6 +335,7 @@ export default function Dashboard() {
                                     cursor: "pointer"
                                 }}
                             >
+                                <div style={{ position: "relative" }} data-account-menu></div>
                                 {user?.name?.charAt(0).toUpperCase() || "U"}
                             </div>
 
@@ -332,7 +344,7 @@ export default function Dashboard() {
                                     position: "absolute",
                                     right: 0,
                                     top: "44px",
-                                    backgroundColor: "white",
+                                    backgroundColor: "#c9c6c6",
                                     boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
                                     borderRadius: "12px",
                                     padding: "8px",
@@ -442,9 +454,9 @@ export default function Dashboard() {
                         </p>
                         <div style={{
                             padding: "16px",
-                            backgroundColor: "#f0f9ff",
+                            backgroundColor: "#c9c6c6",
                             borderRadius: "8px",
-                            border: "1px solid #bfdbfe",
+                            border: "1px solid #e0e0e0",
                             display: "flex",
                             alignItems: "center",
                             gap: "16px"
@@ -455,7 +467,7 @@ export default function Dashboard() {
                                     {files.length} files
                                 </span>
                             </div>
-                            <div style={{ width: "1px", height: "16px", backgroundColor: "#bfdbfe" }} />
+                            <div style={{ width: "1px", height: "16px", backgroundColor: "#e0e0e0" }} />
                             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                                 <HardDrive size={18} color="#1e40af" />
                                 <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
@@ -477,7 +489,7 @@ export default function Dashboard() {
                             <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
                                 <button
                                     onClick={() => { setFilesError(false); loadFiles(); }}
-                                    style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #e0e0e0", cursor: "pointer", backgroundColor: "white", fontSize: "0.875rem" }}
+                                    style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #c9c6c6", cursor: "pointer", backgroundColor: "#e0e0e0", fontSize: "0.875rem" }}
                                 >
                                     Retry
                                 </button>
@@ -501,7 +513,7 @@ export default function Dashboard() {
                                     zIndex: 200
                                 }}>
                                     <div style={{
-                                        backgroundColor: "white",
+                                        backgroundColor: "#e0e0e0",
                                         borderRadius: "12px",
                                         padding: "32px",
                                         maxWidth: "420px",
@@ -515,7 +527,7 @@ export default function Dashboard() {
                                         <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
                                             <button
                                                 onClick={() => setShowConsentPrompt(false)}
-                                                style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #e0e0e0", cursor: "pointer", backgroundColor: "white", fontSize: "0.875rem" }}
+                                                style={{ padding: "8px 20px", borderRadius: "8px", border: "1px solid #c9c6c6", cursor: "pointer", backgroundColor: "#e0e0e0", fontSize: "0.875rem" }}
                                                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
                                                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}
                                             >
@@ -535,7 +547,7 @@ export default function Dashboard() {
                             )}
 
                             {reportSent && (
-                                <p style={{ marginTop: "16px", fontSize: "0.8rem", color: "#4F46E5" }}>
+                                <p style={{ marginTop: "16px", fontSize: "1.2rem", color: "#4F46E5" }}>
                                     Thanks! GitHub opened with a pre-filled report.
                                 </p>
                             )}
