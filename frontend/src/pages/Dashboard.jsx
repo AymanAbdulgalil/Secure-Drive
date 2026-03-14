@@ -44,6 +44,16 @@ export default function Dashboard() {
     }, [navigate]);
 
     useEffect(() => {
+    function handleClickOutside(e) {
+        if (!e.target.closest("[data-account-menu]")) {
+            setShowAccountMenu(false);
+        }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
         loadFiles();
         loadStorageStats();
     }, []);
@@ -325,6 +335,7 @@ export default function Dashboard() {
                                     cursor: "pointer"
                                 }}
                             >
+                                <div style={{ position: "relative" }} data-account-menu></div>
                                 {user?.name?.charAt(0).toUpperCase() || "U"}
                             </div>
 
