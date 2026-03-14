@@ -1,8 +1,8 @@
 .PHONY: help dev dev-bg prod prod-bg \
-        build build-nc build-vite build-vite-nc build-fastapi build-fastapi-nc \
-        logs vite-logs fastapi-logs postgres-logs minio-logs \
-        ps down restart restart-vite restart-fastapi restart-postgres restart-minio \
-        shell-fastapi shell-postgres clean nuke
+        build build-nc build-vite build-vite-nc build-api build-api-nc \
+        logs vite-logs api-logs postgres-logs minio-logs \
+        ps down restart restart-vite restart-api restart-postgres restart-minio \
+        shell-api shell-postgres clean nuke
 
 # Default target
 .DEFAULT_GOAL := help
@@ -60,13 +60,13 @@ help:
 	@echo "  make build-nc          - Build all services without cache"
 	@echo "  make build-vite        - Build vite with cache"
 	@echo "  make build-vite-nc     - Build vite without cache"
-	@echo "  make build-fastapi     - Build fastapi with cache"
-	@echo "  make build-fastapi-nc  - Build fastapi without cache"
+	@echo "  make build-api         - Build api with cache"
+	@echo "  make build-api-nc      - Build api without cache"
 	@echo ""
 	@echo "Logs:"
 	@echo "  make logs              - View all logs"
 	@echo "  make vite-logs         - View vite logs"
-	@echo "  make fastapi-logs      - View fastapi logs"
+	@echo "  make api-logs          - View api logs"
 	@echo "  make postgres-logs     - View postgres logs"
 	@echo "  make minio-logs        - View minio logs"
 	@echo ""
@@ -75,10 +75,10 @@ help:
 	@echo "  make down              - Stop all containers"
 	@echo "  make restart           - Restart all containers"
 	@echo "  make restart-vite      - Restart vite container"
-	@echo "  make restart-fastapi   - Restart fastapi container"
+	@echo "  make restart-api       - Restart api container"
 	@echo "  make restart-postgres  - Restart postgres container"
 	@echo "  make restart-minio     - Restart minio container"
-	@echo "  make shell-fastapi     - Open bash in fastapi container"
+	@echo "  make shell-api         - Open bash in the api container"
 	@echo "  make shell-postgres    - Open psql in postgres container"
 	@echo "  make clean             - Stop & remove volumes (deletes data!)"
 	@echo ""
@@ -130,13 +130,13 @@ build-vite-nc:
 	@echo "Building vite without cache in $(MODE) mode..."
 	@$(DC) build --no-cache vite
 
-build-fastapi:
-	@echo "Building fastapi in $(MODE) mode..."
-	@$(DC) build fastapi
+build-api:
+	@echo "Building api in $(MODE) mode..."
+	@$(DC) build api
 
-build-fastapi-nc:
-	@echo "Building fastapi without cache in $(MODE) mode..."
-	@$(DC) build --no-cache fastapi
+build-api-nc:
+	@echo "Building api without cache in $(MODE) mode..."
+	@$(DC) build --no-cache api
 
 #==============================================================================
 # LOG TARGETS
@@ -152,10 +152,10 @@ vite-logs:
 	@echo "Showing vite logs in $(MODE) mode..."
 	@$(DC) logs -f vite
 
-fastapi-logs:
+api-logs:
 	$(call check_running)
-	@echo "Showing fastapi logs in $(MODE) mode..."
-	@$(DC) logs -f fastapi
+	@echo "Showing api logs in $(MODE) mode..."
+	@$(DC) logs -f api
 
 postgres-logs:
 	$(call check_running)
@@ -196,10 +196,10 @@ restart-vite:
 	@echo "Restarting vite in $(MODE) mode..."
 	@$(DC) restart vite
 
-restart-fastapi:
+restart-api:
 	$(call check_running)
-	@echo "Restarting fastapi in $(MODE) mode..."
-	@$(DC) restart fastapi
+	@echo "Restarting api in $(MODE) mode..."
+	@$(DC) restart api
 
 restart-postgres:
 	$(call check_running)
@@ -211,10 +211,10 @@ restart-minio:
 	@echo "Restarting minio in $(MODE) mode..."
 	@$(DC) restart minio
 
-shell-fastapi:
+shell-api:
 	$(call check_running)
-	@echo "Opening shell in fastapi container..."
-	@$(DC) exec fastapi bash
+	@echo "Opening shell in api container..."
+	@$(DC) exec api bash
 
 shell-postgres:
 	$(call check_running)
