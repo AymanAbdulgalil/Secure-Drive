@@ -4,10 +4,9 @@ minio
 
 fastapi
 pyjwt
-passlib[bcrypt]
+argon2-cffi
 pydantic[email]
 itsdangerous
 aiosmtplib
 python-multipart
 uvicorn[standard]
-bcrypt==5.0.0

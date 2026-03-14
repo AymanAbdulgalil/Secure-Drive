@@ -1,14 +1,17 @@
 import re
+import base64
 from typing import Annotated
 from pathlib import PurePosixPath
-from pydantic import Field, TypeAdapter, EmailStr
+from pydantic import TypeAdapter, EmailStr
 from pydantic.functional_validators import AfterValidator
 from pydantic.networks import IPvAnyAddress
 
 
 _BUCKET_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$")
 _IP_ADDRESS_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
-_MIME_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*$")
+_MIME_RE = re.compile(
+    r"^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*$"
+)
 
 
 def _validate_bucket_name(value: str) -> str:
@@ -65,8 +68,17 @@ def _validate_logical_path(value: PurePosixPath) -> PurePosixPath:
     return value
 
 
+def validate_base64(v: str) -> str:
+    try:
+        base64.b64decode(v, validate=True)
+        return v
+    except Exception:
+        raise ValueError("Invalid base64 string")
+
+
 Bucket = Annotated[str, AfterValidator(_validate_bucket_name)]
 MimeType = Annotated[str, AfterValidator(_validate_mime)]
 SHA256Hex = Annotated[str, AfterValidator(_validate_hex)]
 Email = Annotated[str, AfterValidator(_validate_email)]
 LogicalPath = Annotated[PurePosixPath, AfterValidator(_validate_logical_path)]
+Base64Str = Annotated[str, AfterValidator(validate_base64)]

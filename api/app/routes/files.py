@@ -335,7 +335,6 @@ async def delete_file_endpoint(
         minio_delete_file(str(meta["file_key"]))
     except Exception as exc:
         # Log and continue - stale objects can be cleaned up separately
-        print(f"[WARN] MinIO delete failed for {meta['file_key']}: {exc}")
 
     await repo_delete_file(conn, file_uuid)
 

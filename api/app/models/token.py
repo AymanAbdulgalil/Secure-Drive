@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, Field, field_serializer, model_validator
 from pydantic.networks import IPvAnyAddress
+from typing import Literal
 
 from .types import SHA256Hex
 
@@ -28,7 +31,7 @@ class RefreshToken(BaseModel):
     @field_serializer("ip_address", "token_id", "user_id", "family_id", "superseded_by")
     def serialize_ip(self, value) -> str:
         return str(value)
-    
+
     @model_validator(mode="after")
     def check_integrity(self) -> "RefreshToken":
         if self.issued_at >= self.expires_at:
@@ -38,7 +41,7 @@ class RefreshToken(BaseModel):
         if not self.revoked and self.revoked_at is not None:
             raise ValueError("revoked_at should not be set when revoked is False")
         return self
-    
+
 
 class RefreshTokenCreate(BaseModel):
     user_id: UUID
@@ -52,12 +55,25 @@ class RefreshTokenCreate(BaseModel):
         return str(address)
 
 
-class RefreshTokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int = Field(..., description="Time until the token expires in seconds.")
-    refresh_token: str | None = Field(None, description="Only present when token rotation is enabled.")
-
-
 class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., min_length=1)
+
+
+class VerificationToken(BaseModel):
+    sub: UUID
+    ver: int = Field(..., ge=0)
+    exp: int = Field(..., gt=0)
+    typ: Literal["verification"] = "verification"
+    tok: str | None = Field(
+        default=None, exclude=True, min_length=66   # sha256 hash + . + token json dump
+    )
+
+
+class AccessToken(BaseModel):
+    sub: UUID
+    ver: int = Field(..., ge=0)
+    exp: int = Field(..., ge=0)
+    typ: Literal["access"] = "access"
+    tok: str | None = Field(
+        default=None, exclude=True, min_length=66   # sha256 hash + . + token json dump
+    )

@@ -1,36 +1,36 @@
 from __future__ import annotations
 
-from asyncpg import Record, Connection, UniqueViolationError
+from uuid import uuid4
+from asyncpg import Connection
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 
-from ...models.token import RefreshTokenResponse
 from .._common import get_db
-from ...database.user import (
-    create_user,
-    invalidate_access_tokens,
-    mark_verified,
-    get_user_by_email,
-    record_login,
-)
-from ...services.email_verification import (
-    send_email,
-    create_token,
-    validate_token,
-)
 from ...models.user import (
     UserRegister,
     UserLogin,
     UserResponse,
 )
-from .utils import (
-    get_current_user_id,
-    hash_password,
-    verify_password,
-    create_access_token,
-    get_current_user
-    # create_refresh_token,
+from ...models.token import RefreshToken
+from ...models.types import Email
+from ...database.user import (
+    create_user,
+    invalidate_access_tokens,
+    mark_verified,
+    increment_verification_version,
+    get_user_by_email,
+    get_user_by_id,
+    record_login,
 )
+from ...database.token import create_refresh_token
+from ...database.user.exceptions import (
+    EmailAlreadyExistsError,
+    UserCreateError,
+)
+from ...services.mailer import send_verification_email
+from ...services.tokens import create_verification_token, decode_verification_token, create_access_token
+from ...services.crypto import hash_password, verify_password
+
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -40,69 +40,71 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 )
 async def register(user_data: UserRegister, conn: Connection = Depends(get_db)):
     try:
-        new_user: Record = await create_user(
+
+        data = user_data
+        data.password = hash_password(data.password)
+
+        new_user = await create_user(
             conn=conn,
-            email=user_data.email,
-            password_hash=hash_password(user_data.password),
-            name=user_data.name,
+            user_data=data,
         )
-    except UniqueViolationError as exc:
+    except EmailAlreadyExistsError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email already exists: " + exc.args[0],
+            detail=str(exc),
         )
-    except Exception as exc:
+    except UserCreateError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Unexpected error: " + exc.args[0],
+            detail=str(exc),
         )
 
     # Attempt to send verification email after the user is persisted
     try:
-        send_email(
-            recipient=new_user["email"],
-            signed_token=create_token(
-                new_user["user_id"],
-            ),
+        token = create_verification_token(
+                user_id=new_user.user_id,
+                version=new_user.verification_version
+            )
+        send_verification_email(
+            recipient=new_user.email,
+            signed_token=token.tok,
         )
     except Exception as exc:
         # Email verification link was not sent — don't roll back, just warn the caller
-        print(
-            f"Warning: Failed to send verification email to {new_user['email']}: {exc}"
-        )
         raise HTTPException(
             status_code=status.HTTP_201_CREATED,
-            detail="Failed to send verification email: " + exc.args[0],
+            detail=f"Failed to send verification email: {exc}",
         )
 
     return UserResponse(
-        name=new_user["name"],
-        email=new_user["email"],
-        created_at=new_user["created_at"],
-        storage_used=new_user["storage_used"],
-        storage_quota=new_user["storage_quota"],
+        name=new_user.name,
+        email=new_user.email,
+        created_at=new_user.created_at,
+        storage_used=new_user.storage_used,
+        storage_quota=new_user.storage_quota,
     )
 
 
 @router.post("/resend-verification", status_code=status.HTTP_200_OK)
-async def resend_verification(email: str, conn: Connection = Depends(get_db)):
+async def resend_verification(email: Email, conn: Connection = Depends(get_db)):
     # Find user by email
-    user: Record = await get_user_by_email(conn=conn, email=email)
+    user = await get_user_by_email(conn=conn, email=email)
 
-    # Attempt to send verification email after the user is persisted
+    user = await increment_verification_version(conn=conn, user_id=user.user_id)
+
     try:
-        send_email(
-            recipient=user["email"],
-            signed_token=create_token(
-                user["user_id"],
+        send_verification_email(
+            recipient=user.email,
+            signed_token=create_verification_token(
+                user_id=user.user_id,
+                version=user.verification_version,
             ),
         )
     except Exception as exc:
         # Email verification link was not sent — don't roll back, just warn the caller
-        print(f"Warning: Failed to send verification email to {user['email']}: {exc}")
         raise HTTPException(
-            status_code=status.HTTP_201_CREATED,
-            detail="Failed to send verification email: " + exc.args[0],
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send verification email: {exc}",
         )
 
 
@@ -111,47 +113,71 @@ async def verify_email(
     signed_token: str,
     conn: Connection = Depends(get_db),
 ):
-    verification_result = validate_token(signed_token=signed_token)
+    token = decode_verification_token(signed_token=signed_token)    # also checks expiery
+    user = await get_user_by_id(conn=conn, user_id=token.sub)
+
+    if user.verification_version != token.ver:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The used verification token has been invalidated.",
+        )
     await mark_verified(
         conn=conn,
-        user_id=verification_result[0],
+        user_id=user.user_id,
+        verification_version=user.verification_version
     )
 
-    return HTMLResponse(content='<script>window.location.href="http://localhost:5173/login"</script>')
+    return HTMLResponse(
+        content='<script>window.location.href="http://localhost:5173/login"</script>'
+    )
 
 
-@router.post("/login", response_model=RefreshTokenResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/login", response_model=UserResponse, status_code=status.HTTP_200_OK
+)
 async def login(credentials: UserLogin, conn: Connection = Depends(get_db)):
     # Find user by email
-    user: Record = await get_user_by_email(conn=conn, email=credentials.email)
+    user = await get_user_by_email(conn=conn, email=credentials.email)
 
-    if not user or not verify_password(
-        plain_password=credentials.password, hashed_password=str(user["password_hash"])
+    if not verify_password(
+        plain_password=credentials.password, hashed_password=user.password_hash
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
 
-    if not user["verified"]:
+    if not user.verified:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Email not verified. Please check your inbox for verification instructions.",
+            detail="Email not verified.",
+        )
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is deactivated, activate before login.",
         )
 
     # Update last login
-    await record_login(conn=conn, user_id=user["user_id"])
+    await record_login(conn=conn, user_id=user.user_id)
 
     # Create tokens
-    access_token, exp = create_access_token(str(user["user_id"]))
+    access_token = create_access_token(user.user_id, user.verification_version)
+    refresh_token = RefreshToken(
+        token_id=uuid4(),
+        user_id=user.user_id,
 
-    return RefreshTokenResponse(
+    )
+    refresh_token = create_refresh_token(conn=conn, refresh_token=refresh_token)
+
+    return UserResponse(
         access_token=access_token,
-        expires_in=int(exp.timestamp()),
+        refresh_token=
     )
 
 
-# @router.post("/refresh", response_model=RefreshTokenResponse)
+# @router.post("/refresh", response_model=BearerToken)
 # async def refresh(
 #     token_data: RefreshTokenRequest, get_db: Annotated[Session, Depends(get_db)]
 # ):
@@ -206,10 +232,10 @@ async def login(credentials: UserLogin, conn: Connection = Depends(get_db)):
 #     get_db.add(new_refresh_token_record)
 #     get_db.commit()
 
-#     return RefreshTokenResponse(
+#     return BearerToken(
 #         access_token=access_token,
 #         refresh_token=new_refresh_token,
-#         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+#         expires_in=ACCESS_TOKEN_TTL_SECONDS * 60,
 #     )
 
 
@@ -221,7 +247,7 @@ async def logout(
     """
     Logout by revoking all access tokens.
     """
-    
+
     await invalidate_access_tokens(conn=conn, user_id=current_user)
     return None
 

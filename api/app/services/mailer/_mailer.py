@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import smtplib
@@ -10,7 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, parseaddr
 from urllib.parse import quote
 
-from ....queries.exceptions import (
+from .exceptions import (
     MailerError,
     SMTPAuthenticationError,
     SMTPConnectionError,
@@ -113,7 +115,6 @@ def _load_config() -> _EmailConfig:
 
     return _EmailConfig(
         BASE_URL=os.getenv("BASE_URL", ""),
-        # BASE_URL="http://localhost:8000",
         SMTP_HOST=os.getenv("SMTP_HOST", ""),
         SMTP_PORT=_parse_smtp_port(),
         SMTP_USERNAME=os.getenv("SMTP_USERNAME", ""),
@@ -174,7 +175,7 @@ def _build_message(
 # ---------------------------------------------------------------------------
 
 
-def send_email(
+def send_verification_email(
     *,
     recipient: str,
     signed_token: str,
