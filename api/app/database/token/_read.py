@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 
 from ...models.token import RefreshToken
@@ -103,7 +104,7 @@ async def get_active_refresh_tokens_for_user(
         """,
         user_id,
     )
-    return [RefreshToken.model_validate(row) for row in rows]
+    return [RefreshToken.model_validate(dict(row)) for row in rows]
 
 
 async def get_refresh_token_family(
@@ -137,4 +138,4 @@ async def get_refresh_token_family(
         """,
         family_id,
     )
-    return [RefreshToken.model_validate(row) for row in rows]
+    return [RefreshToken.model_validate(dict(row)) for row in rows]

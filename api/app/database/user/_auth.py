@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 
-from .exceptions import UserNotFoundError
-from .._common import assert_found
 from ...models.types import Email
 from ...models.user import User
+from .._common import assert_found
+from .exceptions import UserNotFoundError
 
 
 async def get_active_verified_user_by_email(
@@ -35,7 +36,7 @@ async def get_active_verified_user_by_email(
         email,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def record_login(
@@ -59,5 +60,5 @@ async def record_login(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 

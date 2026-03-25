@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from uuid import uuid4
+
 from asyncpg import Connection, UniqueViolationError
 
-from .exceptions import UserNotFoundError, UserCreateError, EmailAlreadyExistsError
-from .._common import assert_found
 from ...models.user import User, UserRegister
+from ...services.crypto import hash_password
+from .._common import assert_found
+from .exceptions import EmailAlreadyExistsError, UserCreateError, UserNotFoundError
 
 
-async def create_user(
-    *,
-    conn: Connection,
-    user_data: UserRegister
-) -> User:
+async def create_user(*, conn: Connection, user_data: UserRegister) -> User:
     """
     Insert a new user and return the full row.
 
@@ -32,7 +30,7 @@ async def create_user(
             """,
             user_id,
             user_data.email,
-            user_data.password,
+            hash_password(user_data.password),
             user_data.name,
         )
         row = assert_found(row, UserNotFoundError)
@@ -42,6 +40,8 @@ async def create_user(
             f"Could not create user.\n  - Name: {user_data.name}\n  - Email: {user_data.email}"
         )
     except UniqueViolationError:
-        raise EmailAlreadyExistsError(f"User with email {user_data.email!r} already exists.")
+        raise EmailAlreadyExistsError(
+            f"User with email {user_data.email!r} already exists."
+        )
 
-    return User.model_validate(row)
+    return User.model_validate(dict(row))

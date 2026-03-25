@@ -1,25 +1,40 @@
-import re
-import uuid
 import hashlib
+import re
+from pathlib import PurePosixPath
 from tempfile import NamedTemporaryFile
+from uuid import UUID
 
 import asyncpg
-from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import StreamingResponse
 
-from ._common import get_db, get_token
 from ..database.file import (
-    create_file,
-    get_file_by_id,
-    list_files_by_owner,
-    list_files_by_folder,
-    rename_file,
-    move_file,
-    delete_file as repo_delete_file,
-    count_files_by_owner,
+    count_file_meta_by_owner,
+    create_file_meta_and_bytes,
+    delete_file_meta_and_bytes,
+    get_file_meta,
+    get_file_meta_and_bytes,
+    list_file_meta_by_folder,
+    list_file_meta_by_owner,
+    move_file_meta,
+    rename_file_meta,
     total_bytes_by_owner,
 )
-from ..auth.utils import decode_token
+from ..database.file._minio_client import settings as minio_settings
+from ..database.file.exceptions import FileNotFoundError
+from ..models.file import FileCreate
+from ..models.types import LogicalPath
+from ..services.tokens import decode_access_token
+from ._common import get_db, get_token
 
 router = APIRouter(prefix="/files", tags=["files"])
 _CHUNK_SIZE = 1024 * 1024  # 1 MiB
@@ -37,43 +52,28 @@ def _sanitize_filename(name: str) -> str:
     return name[:255].strip() or "unnamed"
 
 
-def _normalize_folder(raw: str | None) -> str:
+def _normalize_folder(raw: str | None) -> LogicalPath:
     """
     Convert a user-supplied folder string to a canonical DB folder path.
 
     Rules
     -----
-    - ``None`` or empty → root  → ``"/"``
+    - ``None`` or empty → root  → ``PurePosixPath("/")``
     - Otherwise sanitize, strip leading/trailing slashes, prepend ``/``
-      e.g. ``"docs/reports/"`` → ``"/docs/reports"``
+      e.g. ``"docs/reports/"`` → ``PurePosixPath("/docs/reports")``
     """
     if not raw or not raw.strip():
-        return "/"
+        return PurePosixPath("/")
     clean = _sanitize_filename(raw.strip("/"))
-    return f"/{clean}"
+    return PurePosixPath(f"/{clean}")
 
 
 def _require_token(token: str) -> dict:
-    """Decode token or raise 401."""
-    tok = decode_token(token)
-    if not tok:
-        raise HTTPException(status_code=401, detail="Invalid authentication token")
-    return tok
-
-
-def _serialize(f: FileMeta) -> dict:
-    """Serialize a FileMeta TypedDict for JSON responses."""
-    return {
-        "file_id": str(f["file_id"]),
-        "name": f["current_name"],
-        "original_name": f["original_name"],
-        "folder": f["folder"],
-        "content_type": f["content_type"],
-        "size_bytes": f["size_bytes"],
-        "sha256": f["sha256_hex"],
-        "created_at": f["created_at"].isoformat(),
-        "updated_at": f["updated_at"].isoformat() if f["updated_at"] else None,
-    }
+    """Decode and validate the bearer token, raising 401 on failure."""
+    try:
+        return decode_access_token(token).model_dump()
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
 
 
 # ─── POST /files ──────────────────────────────────────────────────────────────
@@ -88,10 +88,8 @@ async def upload_file(
 ):
     """Upload a file to object storage and record its metadata."""
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
-    file_uuid = uuid.uuid4()
-    file_key = make_file_key(user_id=owner_id, file_uuid=file_uuid)
     folder_path = _normalize_folder(folder)
     current_name = _sanitize_filename(logical_name or file.filename or "unnamed")
 
@@ -108,37 +106,29 @@ async def upload_file(
             raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
         tmp.seek(0)
-        put_bytes(
-            file_key=file_key,
-            data=tmp,  # type: ignore[arg-type]
-            length=size,
-            content_type=file.content_type or "application/octet-stream",
-            metadata={"original-name": file.filename or ""},
-        )
 
-    try:
-        meta = await create_file(
-            conn=conn,
-            file_id=file_uuid,
+        file_meta = FileCreate(
             owner_id=owner_id,
-            bucket=settings.bucket,
-            file_key=file_key,
-            original_name=current_name,
-            current_name=current_name,
+            bucket=minio_settings.bucket,
             folder=folder_path,
-            content_type=file.content_type,
+            name=current_name,
+            mime_type=file.content_type or "application/octet-stream",
             size_bytes=size,
             sha256_hex=h.hexdigest(),
         )
-    except asyncpg.UniqueViolationError:
-        # file_key collision (should not happen with uuid4, but be safe)
-        minio_delete_file(file_key)
-        raise HTTPException(status_code=409, detail="File key conflict; please retry")
-    except asyncpg.ForeignKeyViolationError:
-        minio_delete_file(file_key)
-        raise HTTPException(status_code=400, detail="Owner account not found")
 
-    return _serialize(meta)
+        try:
+            meta = await create_file_meta_and_bytes(
+                conn=conn,
+                file_meta=file_meta,
+                file_bytes=tmp,  # type: ignore[arg-type]
+            )
+        except asyncpg.UniqueViolationError:
+            raise HTTPException(status_code=409, detail="File key conflict; please retry")
+        except asyncpg.ForeignKeyViolationError:
+            raise HTTPException(status_code=400, detail="Owner account not found")
+
+    return meta.model_dump()
 
 
 # ─── GET /files ───────────────────────────────────────────────────────────────
@@ -162,7 +152,7 @@ async def list_files(
     - **limit** / **offset**: pagination
     """
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
     if sort_by not in _ALLOWED_SORT:
         raise HTTPException(
@@ -173,38 +163,36 @@ async def list_files(
     ascending = sort_order.lower() == "asc"
 
     if folder is not None:
-        # Caller explicitly wants a specific folder
         canonical = _normalize_folder(folder)
-        rows = await list_files_by_folder(
-            conn,
-            owner_id,
-            canonical,
+        rows = await list_file_meta_by_folder(
+            conn=conn,
+            owner_id=owner_id,
+            folder=canonical,
             limit=limit,
             offset=offset,
         )
-        # Count for has_more
         total = await conn.fetchval(
             "SELECT COUNT(*) FROM files WHERE owner_id = $1 AND folder = $2",
             owner_id,
             canonical,
         )
     else:
-        rows = await list_files_by_owner(
-            conn,
-            owner_id,
+        rows = await list_file_meta_by_owner(
+            conn=conn,
+            owner_id=owner_id,
             limit=limit,
             offset=offset,
             order_by=sort_by,
             ascending=ascending,
         )
-        total = await count_files_by_owner(conn, owner_id)
+        total = await count_file_meta_by_owner(conn=conn, owner_id=owner_id)
 
     return {
-        "items": [_serialize(r) for r in rows],
+        "items": [r.model_dump() for r in rows],
         "total_count": total,
         "limit": limit,
         "offset": offset,
-        "has_more": (offset + limit) < total, # type: ignore
+        "has_more": (offset + limit) < total,  # type: ignore
     }
 
 
@@ -217,7 +205,7 @@ async def list_folders(
 ):
     """Return the distinct folder paths that belong to the current user, with file counts."""
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
     rows = await conn.fetch(
         """
@@ -251,10 +239,10 @@ async def get_storage_stats(
 ):
     """Return aggregate storage statistics for the current user."""
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
-    total_files = await count_files_by_owner(conn, owner_id)
-    total_bytes = await total_bytes_by_owner(conn, owner_id)
+    total_files = await count_file_meta_by_owner(conn=conn, owner_id=owner_id)
+    total_bytes = await total_bytes_by_owner(conn=conn, owner_id=owner_id)
 
     return {
         "total_files": total_files,
@@ -267,26 +255,28 @@ async def get_storage_stats(
 
 @router.get("/{file_id}")
 async def download_file(
-    file_id: str,
+    file_id: UUID,
     conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Stream a file download. The browser will trigger a Save dialog."""
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
     try:
-        file_uuid = uuid.UUID(file_id)
+        file_uuid = file_id
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid file_id format")
 
-    meta = await get_file_by_id(conn, file_uuid)
-    if not meta:
+    try:
+        meta, obj = await get_file_meta_and_bytes(conn=conn, file_id=file_uuid)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
-    if meta["owner_id"] != owner_id:
-        raise HTTPException(status_code=403, detail="Access denied")
 
-    obj = get_file_stream(meta["file_key"])
+    if meta.owner_id != owner_id:
+        obj.close()
+        obj.release_conn()
+        raise HTTPException(status_code=403, detail="Access denied")
 
     def _iterator():
         try:
@@ -297,12 +287,12 @@ async def download_file(
             obj.release_conn()
 
     headers = {
-        "Content-Disposition": f'attachment; filename="{_sanitize_filename(meta["current_name"])}"',
-        "X-Content-SHA256": meta["sha256_hex"],
+        "Content-Disposition": f'attachment; filename="{_sanitize_filename(meta.current_name)}"',
+        "X-Content-SHA256": meta.sha256_hex,
     }
     return StreamingResponse(
         _iterator(),
-        media_type=meta["content_type"] or "application/octet-stream",
+        media_type=meta.mime_type or "application/octet-stream",
         headers=headers,
     )
 
@@ -311,33 +301,28 @@ async def download_file(
 
 @router.delete("/{file_id}", status_code=status.HTTP_200_OK)
 async def delete_file_endpoint(
-    file_id: str,
+    file_id: UUID,
     conn: asyncpg.Connection = Depends(get_db),
     token: str = Depends(get_token),
 ):
     """Delete a file from object storage and remove its database record."""
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
     try:
-        file_uuid = uuid.UUID(file_id)
+        file_uuid = file_id
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid file_id format")
 
-    meta = await get_file_by_id(conn, file_uuid)
-    if not meta:
+    try:
+        meta = await get_file_meta(conn=conn, file_id=file_uuid)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
-    if meta["owner_id"] != owner_id:
+
+    if meta.owner_id != owner_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Best-effort MinIO delete; DB record is authoritative
-    try:
-        minio_delete_file(str(meta["file_key"]))
-    except Exception as exc:
-        # Log and continue - stale objects can be cleaned up separately
-        print(f"[WARN] MinIO delete failed for {meta['file_key']}: {exc}")
-
-    await repo_delete_file(conn, file_uuid)
+    await delete_file_meta_and_bytes(conn=conn, file_id=file_uuid)
 
     return {"success": True, "file_id": file_id, "message": "File deleted successfully"}
 
@@ -346,7 +331,7 @@ async def delete_file_endpoint(
 
 @router.patch("/{file_id}")
 async def update_file_metadata(
-    file_id: str,
+    file_id: UUID,
     name: str | None = Form(None),
     folder: str | None = Form(None),
     conn: asyncpg.Connection = Depends(get_db),
@@ -359,29 +344,33 @@ async def update_file_metadata(
     - **folder**: new folder path; ``""`` or ``"/"`` moves the file to root
     """
     tok = _require_token(token)
-    owner_id = uuid.UUID(tok["sub"])
+    owner_id = tok["sub"]
 
     try:
-        file_uuid = uuid.UUID(file_id)
+        file_uuid = file_id
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid file_id format")
 
-    meta = await get_file_by_id(conn, file_uuid)
-    if not meta:
+    try:
+        meta = await get_file_meta(conn=conn, file_id=file_uuid)
+    except FileNotFoundError:
         raise HTTPException(status_code=404, detail="File not found")
-    if meta["owner_id"] != owner_id:
+
+    if meta.owner_id != owner_id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Apply rename if requested
     if name is not None:
-        updated = await rename_file(conn, file_uuid, _sanitize_filename(name))
-        if updated:
-            meta = updated
+        meta = await rename_file_meta(
+            conn=conn,
+            file_id=file_uuid,
+            new_name=_sanitize_filename(name),
+        )
 
-    # Apply folder move if requested
     if folder is not None:
-        updated = await move_file(conn, file_uuid, folder=_normalize_folder(folder))
-        if updated:
-            meta = updated
+        meta = await move_file_meta(
+            conn=conn,
+            file_id=file_uuid,
+            folder=_normalize_folder(folder),
+        )
 
-    return _serialize(meta)
+    return meta.model_dump()

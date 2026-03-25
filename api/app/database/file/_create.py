@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from asyncpg import Connection
 from typing import BinaryIO
 from uuid import uuid4
 
+from asyncpg import Connection
+
 from ...models.file import File, FileCreate
-from ._minio_client import put_file
 from .._common import assert_found
-from .exceptions import FileNotFoundError, FileCreateError
+from ._minio_client import put_file
+from .exceptions import FileCreateError, FileNotFoundError
 
 
 async def create_file_meta_and_bytes(
@@ -72,14 +73,15 @@ async def create_file_meta_and_bytes(
                 file_id,
                 file_meta.owner_id,
                 file_meta.bucket,
-                file_meta.folder,
+                str(file_meta.folder),
                 file_meta.name,
                 file_meta.name,
                 file_meta.mime_type,
                 file_meta.size_bytes,
                 file_meta.sha256_hex,
             )
-            if assert_found(row, FileNotFoundError):
+            row = assert_found(row, FileNotFoundError)
+            if row:
                 put_file(
                     file_id=file_id,
                     file_bytes=file_bytes,
@@ -88,4 +90,4 @@ async def create_file_meta_and_bytes(
     except FileNotFoundError:
         raise FileCreateError(f"Could not create file '{file_meta.name}'.")
 
-    return File.model_validate(row)
+    return File.model_validate(dict(row))

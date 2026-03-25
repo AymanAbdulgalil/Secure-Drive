@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 from urllib3.response import BaseHTTPResponse
 
 from ...models.file import File
-from ...models.types import SHA256Hex, LogicalPath
+from ...models.types import LogicalPath, SHA256Hex
 from .._common import assert_found
 from ._minio_client import get_file_stream
-
 
 # Allowlist for the ORDER BY column in list_file_meta_by_owner.
 # Adding a column here is the only change needed to expose new sort options.
@@ -189,7 +189,7 @@ async def list_file_meta_by_owner(
         limit,
         offset,
     )
-    return [File.model_validate(row) for row in rows]
+    return [File.model_validate(dict(row)) for row in rows]
 
 
 async def list_file_meta_by_folder(
@@ -255,4 +255,4 @@ async def list_file_meta_by_folder(
             limit,
             offset,
         )
-    return [File.model_validate(row) for row in rows]
+    return [File.model_validate(dict(row)) for row in rows]
