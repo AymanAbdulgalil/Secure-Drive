@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 
-from .exceptions import UserNotFoundError
-from .._common import assert_found
-from ...models.user import User
 from ...models.types import Email
+from ...models.user import User
+from .._common import assert_found
+from .exceptions import UserNotFoundError
 
 
 async def get_user_by_id(
@@ -21,8 +22,11 @@ async def get_user_by_id(
         UserNotFoundError: No user exists with that UUID.
     """
     row = await conn.fetchrow("SELECT * FROM users WHERE user_id = $1", user_id)
-    row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    try:
+        row = assert_found(row, UserNotFoundError)
+    except Exception as exc:
+        raise UserNotFoundError from exc
+    return User.model_validate(dict(row))
 
 
 async def get_user_by_email(
@@ -37,8 +41,11 @@ async def get_user_by_email(
         UserNotFoundError: No user exists with that email.
     """
     row = await conn.fetchrow("SELECT * FROM users WHERE email = $1", email)
-    row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    try:
+        row = assert_found(row, UserNotFoundError)
+    except Exception as exc:
+        raise UserNotFoundError from exc
+    return User.model_validate(dict(row))
 
 
 async def count_users(
@@ -86,9 +93,8 @@ async def list_users(
     base_sql = "SELECT * FROM users{where} ORDER BY created_at DESC LIMIT $1 OFFSET $2"
     where = " WHERE is_active = TRUE" if active_only else ""
     rows = await conn.fetch(base_sql.format(where=where), safe_limit, safe_offset)
-    rows = [User.model_validate(row) for row in rows]
+    rows = [User.model_validate(dict(row)) for row in rows]
 
     total = await count_users(conn=conn, active_only=active_only)
     remaining = max(0, total - (safe_offset + len(rows)))
     return rows, remaining
-

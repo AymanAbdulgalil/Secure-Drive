@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 
 from ...models.file import File
+from ...models.types import Bucket, LogicalPath
 from .._common import assert_found
 from ._read import get_file_meta
 
@@ -58,8 +60,8 @@ async def move_file_meta(
     *,
     conn: Connection,
     file_id: UUID,
-    bucket: str | None = None,
-    folder: str | None = None,
+    bucket: Bucket | None = None,
+    folder: LogicalPath | None = None,
 ) -> File:
     """Relocate a file by updating its bucket, folder, or both.
 
@@ -77,8 +79,9 @@ async def move_file_meta(
     bucket:
         New bucket name, or ``None`` to leave unchanged.
     folder:
-        New logical folder path, or ``None`` to leave unchanged.  Must start
-        with ``"/"`` (enforced by the database constraint
+        New logical folder path, or ``None`` to leave unchanged.  Must be an
+        absolute ``PurePosixPath`` with no ``..`` segments (enforced by the
+        ``LogicalPath`` type and the database constraint
         ``chk_files_folder_starts_with_slash``).
 
     Returns
@@ -101,7 +104,7 @@ async def move_file_meta(
         params.append(bucket)
         updates.append(f"bucket = ${len(params)}")
     if folder is not None:
-        params.append(folder)
+        params.append(str(folder))  # asyncpg expects str, not PurePosixPath
         updates.append(f"folder = ${len(params)}")
 
     if not updates:

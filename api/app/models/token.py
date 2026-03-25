@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, Field, field_serializer, model_validator
-from pydantic.networks import IPvAnyAddress
 from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
 from .types import SHA256Hex
 
@@ -24,11 +24,9 @@ class RefreshToken(BaseModel):
     family_id: UUID
     superseded_by: UUID | None = None
 
-    device_info: str = Field(..., min_length=1)
-    ip_address: IPvAnyAddress
     last_used_at: datetime | None = None
 
-    @field_serializer("ip_address", "token_id", "user_id", "family_id", "superseded_by")
+    @field_serializer("token_id", "user_id", "family_id", "superseded_by")
     def serialize_ip(self, value) -> str:
         return str(value)
 
@@ -47,12 +45,6 @@ class RefreshTokenCreate(BaseModel):
     user_id: UUID
     token_hash: SHA256Hex
     family_id: UUID
-    device_info: str = Field(..., min_length=1)
-    ip_address: IPvAnyAddress
-
-    @field_serializer("ip_address")
-    def serialize_ip(self, address) -> str:
-        return str(address)
 
 
 class RefreshTokenRequest(BaseModel):
@@ -65,7 +57,9 @@ class VerificationToken(BaseModel):
     exp: int = Field(..., gt=0)
     typ: Literal["verification"] = "verification"
     tok: str | None = Field(
-        default=None, exclude=True, min_length=66   # sha256 hash + . + token json dump
+        default=None,
+        exclude=True,
+        min_length=66,
     )
 
 
@@ -75,5 +69,7 @@ class AccessToken(BaseModel):
     exp: int = Field(..., ge=0)
     typ: Literal["access"] = "access"
     tok: str | None = Field(
-        default=None, exclude=True, min_length=66   # sha256 hash + . + token json dump
+        default=None,
+        exclude=True,
+        min_length=66,  # sha256 hash + . + token json dump
     )

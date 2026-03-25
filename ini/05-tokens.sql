@@ -21,12 +21,7 @@ CREATE TABLE refresh_tokens (
     -- All tokens belonging to the same rotation chain share a family_id.
     -- Detecting reuse of a superseded token in a family → revoke the whole family.
     family_id       UUID NOT NULL DEFAULT gen_random_uuid(),
-    superseded_by   UUID DEFAULT NULL,
-
-    -- Context
-    device_info     TEXT,
-    ip_address      VARCHAR(45),
-    last_used_at    TIMESTAMPTZ DEFAULT NULL
+    superseded_by   UUID DEFAULT NULL
 );
 
 ALTER TABLE refresh_tokens

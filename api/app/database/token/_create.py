@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from asyncpg import Connection
 from datetime import datetime
+
+from asyncpg import Connection
 
 from ...models.token import RefreshToken, RefreshTokenCreate
 from .._common import assert_found
-from .exceptions import TokenNotFoundError, TokenCreateError
+from .exceptions import TokenCreateError, TokenNotFoundError
 
 
 async def create_refresh_token(
@@ -41,16 +42,14 @@ async def create_refresh_token(
         """
         INSERT INTO refresh_tokens (
             user_id, token_hash, family_id,
-            device_info, ip_address, expires_at
+            expires_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4)
         RETURNING *
         """,
         refresh_token.user_id,
         refresh_token.token_hash,
         refresh_token.family_id,
-        refresh_token.device_info,
-        refresh_token.ip_address,
         expires_at,
     )
     try:
@@ -59,5 +58,4 @@ async def create_refresh_token(
         raise TokenCreateError(
             f"Could not create a refresh token for user: {refresh_token.user_id}"
         )
-    return RefreshToken.model_validate(row)
-
+    return RefreshToken.model_validate(dict(row))

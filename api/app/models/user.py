@@ -1,15 +1,15 @@
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel, Field
 
-from .types import SHA256Hex, Email
-from .token import AccessToken, RefreshToken
+from .types import Email
 
 
 class User(BaseModel):
     user_id: UUID
     email: Email
-    password_hash: SHA256Hex
+    password_hash: str
     name: str = Field(..., min_length=1, max_length=255)
     
     created_at: datetime

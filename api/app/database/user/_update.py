@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from uuid import UUID
-from asyncpg import Connection, UniqueViolationError, CheckViolationError
 
-from .exceptions import UserNotFoundError, EmailAlreadyExistsError, StorageQuotaExceededError
-from .._common import assert_found
-from ...models.user import User
+from asyncpg import CheckViolationError, Connection, UniqueViolationError
+
 from ...models.types import Email, SHA256Hex
+from ...models.user import User
+from .._common import assert_found
+from .exceptions import (
+    EmailAlreadyExistsError,
+    StorageQuotaExceededError,
+    UserNotFoundError,
+)
 
 
 async def update_name(
@@ -32,7 +37,7 @@ async def update_name(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def update_email(
@@ -67,7 +72,7 @@ async def update_email(
         raise EmailAlreadyExistsError(f"User with email {email!r} already exists.")
 
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def update_password(
@@ -95,7 +100,7 @@ async def update_password(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def increment_storage_used(
@@ -135,7 +140,7 @@ async def increment_storage_used(
         raise
 
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def update_storage_quota(
@@ -172,4 +177,4 @@ async def update_storage_quota(
         ) from exc
 
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))

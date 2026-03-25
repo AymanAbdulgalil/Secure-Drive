@@ -3,15 +3,13 @@ from __future__ import annotations
 import hashlib
 import secrets
 
-
-
-
 __all__ = [
     "generate_refresh_token",
     "hash_refresh_token",
 ]
 
-def create_refresh_token() -> str:
+
+def generate_refresh_token() -> str:
     """
     Generate a cryptographically secure opaque refresh token.
     Returns the RAW token — only ever seen once, returned to the client.

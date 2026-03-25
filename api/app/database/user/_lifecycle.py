@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from uuid import UUID
+
 from asyncpg import Connection
 
-from .exceptions import UserNotFoundError
-from .._common import assert_found
 from ...models.user import User
+from .._common import assert_found
+from .exceptions import UserNotFoundError
 
 
 async def invalidate_access_tokens(
@@ -33,7 +34,7 @@ async def invalidate_access_tokens(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def deactivate_user(
@@ -62,7 +63,7 @@ async def deactivate_user(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def reactivate_user(
@@ -88,7 +89,7 @@ async def reactivate_user(
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
-    return User.model_validate(row)
+    return User.model_validate(dict(row))
 
 
 async def delete_user(
