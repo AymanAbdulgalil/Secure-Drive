@@ -9,7 +9,6 @@ Submodules and tamplates:
     _body_template.txt:       Plaintext email body template (fallback if html is not supported).
 """
 
-from ._mailer import send_verification_email
+from ._mailer import send_password_reset_email, send_verification_email
 
-
-__all__ = ["send_verification_email"]
+__all__ = ["send_verification_email", "send_password_reset_email"]
