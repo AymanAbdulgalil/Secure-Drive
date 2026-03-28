@@ -4,22 +4,20 @@ import os
 import re
 import smtplib
 import socket
-from pathlib import Path
-from functools import lru_cache
 from dataclasses import dataclass
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from email.utils import formataddr, parseaddr
-from urllib.parse import quote
+from functools import lru_cache
+from pathlib import Path
 
 from .exceptions import (
+    InvalidAddressError,
     MailerError,
     SMTPAuthenticationError,
     SMTPConnectionError,
     SMTPSendError,
-    InvalidAddressError
 )
-
 
 # ---------------------------------------------------------------------------
 # Config dataclass
@@ -209,7 +207,7 @@ def send_verification_email(
     sender_addr = _validate_address(config.SMTP_ADDRESS, "sender")
     recipient_addr = _validate_address(recipient, "recipient")
 
-    verify_url = f"{config.ENDPOINT}/{quote(signed_token, safe='')}"
+    verify_url = f"{config.ENDPOINT}/{signed_token}"
 
     text_body = config.TEXT_BODY_TEMPLATE.replace(
         config.URL_PLACEHOLDER, verify_url

@@ -1,17 +1,25 @@
-import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const env = loadEnv(mode, process.cwd(), "");
 
   return {
     plugins: [react()],
 
-    // Source - https://stackoverflow.com/a/79377387
-    // Posted by ansmonjol, modified by community. See post 'Timeline' for change history
-    // Retrieved 2026-03-02, License - CC BY-SA 4.0
     server: {
       allowedHosts: [env.VITE_DOMAIN],
+      proxy: {
+        "/api": {
+          target: env.VITE_API_URL || "http://localhost:8000",
+          changeOrigin: true,
+        },
+      },
+      hmr: {
+        host: env.VITE_DOMAIN,
+        protocol: "wss", // cloudflare tunnel is always HTTPS/WSS
+        clientPort: 443, // tunnel terminates SSL, so client connects on 443
+      },
     },
-  }
-})
+  };
+});
