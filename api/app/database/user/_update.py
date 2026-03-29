@@ -4,8 +4,9 @@ from uuid import UUID
 
 from asyncpg import CheckViolationError, Connection, UniqueViolationError
 
-from ...models.types import Email, SHA256Hex
+from ...models.types import Email
 from ...models.user import User
+from ...services.crypto import hash_password
 from .._common import assert_found
 from .exceptions import (
     EmailAlreadyExistsError,
@@ -79,7 +80,7 @@ async def update_password(
     *,
     conn: Connection,
     user_id: UUID,
-    password_hash: SHA256Hex,
+    password: str,
 ) -> User:
     """
     Replace the password hash and advance ``valid_since`` to the current UTC
@@ -96,7 +97,7 @@ async def update_password(
         WHERE user_id = $2
         RETURNING *
         """,
-        password_hash,
+        hash_password(password),
         user_id,
     )
     row = assert_found(row, UserNotFoundError)
@@ -176,5 +177,76 @@ async def update_storage_quota(
             "New quota would be below current usage or non-positive."
         ) from exc
 
+    row = assert_found(row, UserNotFoundError)
+    return User.model_validate(dict(row))
+
+
+async def mark_verified(
+    *,
+    conn: Connection,
+    user_id: UUID,
+    verification_version: int,
+) -> User:
+    """
+    Set ``verified = TRUE`` only when the stored ``verification_version``
+    matches the value embedded in the token.
+
+    The version check is the replay-protection mechanism: if
+    ``increment_verification_version`` has been called since the token was
+    issued (e.g. the user requested a second link), the UPDATE matches zero
+    rows and ``UserNotFoundError`` is raised.
+
+    Raises:
+        UserNotFoundError: Token version is stale, user is inactive, or the
+            UUID does not exist.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE users
+        SET verified = TRUE
+        WHERE user_id             = $1
+          AND is_active           = TRUE
+          AND verification_version = $2
+        RETURNING *
+        """,
+        user_id,
+        verification_version,
+    )
+    row = assert_found(row, UserNotFoundError)
+    return User.model_validate(dict(row))
+
+
+async def mark_unverified(
+    *,
+    conn: Connection,
+    user_id: UUID,
+    verification_version: int,
+) -> User:
+    """
+    Set ``verified = TRUE`` only when the stored ``verification_version``
+    matches the value embedded in the token.
+
+    The version check is the replay-protection mechanism: if
+    ``increment_verification_version`` has been called since the token was
+    issued (e.g. the user requested a second link), the UPDATE matches zero
+    rows and ``UserNotFoundError`` is raised.
+
+    Raises:
+        UserNotFoundError: Token version is stale, user is inactive, or the
+            UUID does not exist.
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE users
+        SET verified = FALSE,
+            verification_version = 0
+        WHERE user_id             = $1
+          AND is_active           = TRUE
+          AND verification_version = $2
+        RETURNING *
+        """,
+        user_id,
+        verification_version,
+    )
     row = assert_found(row, UserNotFoundError)
     return User.model_validate(dict(row))

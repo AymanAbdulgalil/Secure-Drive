@@ -37,7 +37,7 @@ CREATE TABLE users (
 
     -- Versions
     verification_version INT NOT NULL DEFAULT 0,  -- for email verification tokens
-    -- password_version     INT NOT NULL DEFAULT 0,  -- for password reset tokens
+    password_version     INT NOT NULL DEFAULT 0,  -- for password reset tokens
 
     -- State
     verified             BOOLEAN NOT NULL DEFAULT FALSE,

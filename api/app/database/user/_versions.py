@@ -37,36 +37,29 @@ async def increment_verification_version(
     return User.model_validate(dict(row))
 
 
-async def mark_verified(
+async def increment_password_version(
     *,
     conn: Connection,
     user_id: UUID,
-    verification_version: int,
 ) -> User:
     """
-    Set ``verified = TRUE`` only when the stored ``verification_version``
-    matches the value embedded in the token.
+    Bump ``password_version`` by one, invalidating any outstanding
+    password-reset tokens that embed the previous version number.
 
-    The version check is the replay-protection mechanism: if
-    ``increment_verification_version`` has been called since the token was
-    issued (e.g. the user requested a second link), the UPDATE matches zero
-    rows and ``UserNotFoundError`` is raised.
+    Call this before issuing a fresh password reset email so that older links
+    can no longer be replayed.
 
     Raises:
-        UserNotFoundError: Token version is stale, user is inactive, or the
-            UUID does not exist.
+        UserNotFoundError: No user exists with that UUID.
     """
     row = await conn.fetchrow(
         """
         UPDATE users
-        SET verified = TRUE
-        WHERE user_id             = $1
-          AND is_active           = TRUE
-          AND verification_version = $2
+        SET password_version = password_version + 1
+        WHERE user_id = $1
         RETURNING *
         """,
         user_id,
-        verification_version,
     )
     row = assert_found(row, UserNotFoundError)
     return User.model_validate(dict(row))

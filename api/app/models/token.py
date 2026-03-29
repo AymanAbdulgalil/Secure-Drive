@@ -62,6 +62,17 @@ class VerificationToken(BaseModel):
         min_length=66,
     )
 
+class PasswordResetToken(BaseModel):
+    sub: UUID
+    ver: int = Field(..., ge=0)
+    exp: int = Field(..., gt=0)
+    typ: Literal["password reset"] = "password reset"
+    tok: str | None = Field(
+        default=None,
+        exclude=True,
+        min_length=66,
+    )
+
 
 class AccessToken(BaseModel):
     sub: UUID
@@ -71,5 +82,5 @@ class AccessToken(BaseModel):
     tok: str | None = Field(
         default=None,
         exclude=True,
-        min_length=66,  # sha256 hash + . + token json dump
+        min_length=66,
     )

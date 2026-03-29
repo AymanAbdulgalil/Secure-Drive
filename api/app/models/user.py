@@ -19,7 +19,8 @@ class User(BaseModel):
     storage_used: int = Field(..., ge=0)
     storage_quota: int = Field(..., ge=0)
 
-    verification_version: int = Field(..., ge=0)
+    verification_version: int = Field(0, ge=0)
+    password_version: int = Field(0, ge=0)
 
     verified: bool
     valid_since: datetime
