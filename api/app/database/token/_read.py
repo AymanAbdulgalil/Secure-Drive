@@ -38,7 +38,7 @@ async def get_refresh_token_by_hash(
         "SELECT * FROM refresh_tokens WHERE token_hash = $1",
         token_hash,
     )
-    return RefreshToken.model_validate(assert_found(row, TokenNotFoundError))
+    return RefreshToken.model_validate(dict(assert_found(row, TokenNotFoundError)))
 
 
 async def get_refresh_token_by_id(
@@ -69,7 +69,7 @@ async def get_refresh_token_by_id(
         "SELECT * FROM refresh_tokens WHERE token_id = $1",
         token_id,
     )
-    return RefreshToken.model_validate(assert_found(row, TokenNotFoundError))
+    return RefreshToken.model_validate(dict(assert_found(row, TokenNotFoundError)))
 
 
 async def get_active_refresh_tokens_for_user(

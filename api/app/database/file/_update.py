@@ -53,7 +53,7 @@ async def rename_file_meta(
         file_id,
         new_name,
     )
-    return File.model_validate(assert_found(row, FileNotFoundError))
+    return File.model_validate(dict(assert_found(row, FileNotFoundError)))
 
 
 async def move_file_meta(
@@ -120,4 +120,4 @@ async def move_file_meta(
         """,
         *params,
     )
-    return File.model_validate(assert_found(row, FileNotFoundError))
+    return File.model_validate(dict(assert_found(row, FileNotFoundError)))
