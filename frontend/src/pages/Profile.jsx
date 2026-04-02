@@ -16,7 +16,7 @@ export default function Profile() {
             const token = getToken();
             if (!token) { navigate("/login"); return; }
             try {
-                const response = await fetch("http://localhost:8000/api/v1/auth/me", {
+                const response = await fetch("/api/v1/auth/me", {
                     headers: { "Authorization": `Bearer ${token}` }
                 });
                 if (response.ok) {
@@ -54,7 +54,7 @@ export default function Profile() {
                     formData.append("avatar", file);
                     try {
                         const token = getToken();
-                        const response = await fetch("http://localhost:8000/api/v1/auth/me/avatar", {
+                        const response = await fetch("/api/v1/auth/me/avatar", {
                             method: "POST",
                             headers: { "Authorization": `Bearer ${token}` },
                             body: formData
@@ -152,7 +152,7 @@ export default function Profile() {
                                             onClick={async () => {
                                                 try {
                                                     const token = getToken();
-                                                    const response = await fetch("http://localhost:8000/api/v1/auth/me", {
+                                                    const response = await fetch("/api/v1/auth/me", {
                                                         method: "PATCH",
                                                         headers: {
                                                             "Authorization": `Bearer ${token}`,
@@ -227,7 +227,7 @@ export default function Profile() {
                                     if (!window.confirm("Are you sure? This cannot be undone.")) return;
                                     try {
                                         const token = getToken();
-                                        const response = await fetch("http://localhost:8000/api/v1/auth/me", {
+                                        const response = await fetch("/api/v1/auth/me", {
                                             method: "DELETE",
                                             headers: { "Authorization": `Bearer ${token}` }
                                         });

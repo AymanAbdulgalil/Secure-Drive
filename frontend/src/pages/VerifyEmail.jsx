@@ -29,7 +29,7 @@ function VerifyEmail() {
         setResending(true);
 
         try {
-            const response = await fetch(`http://localhost:8000/api/v1/auth/resend-verification?email=${encodeURIComponent(email)}`, {
+            const response = await fetch(`/api/v1/auth/resend-verification?email=${encodeURIComponent(email)}`, {
                 method: "POST",
                 });
 

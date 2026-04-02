@@ -1,6 +1,6 @@
-// src/api.js
 import { getToken, clearToken } from "./tokenStore";
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+
+const API_BASE_URL = '/api/v1';
 
 function authHeaders(extraHeaders = {}) {
   const token = getToken();
@@ -31,6 +31,19 @@ async function handleResponse(response) {
 }
 
 export const api = {
+  async getMe() {
+    const response = await fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders() });
+    return handleResponse(response);
+  },
+
+  async logout() {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      headers: authHeaders(),
+    });
+    return handleResponse(response);
+  },
+
   async getFiles(params = {}) {
     const queryParams = new URLSearchParams();
     if (params.folder !== undefined) queryParams.append('folder', params.folder);
@@ -40,8 +53,7 @@ export const api = {
     if (params.limit) queryParams.append('limit', params.limit);
     if (params.offset) queryParams.append('offset', params.offset);
 
-    const url = `${API_BASE_URL}/files?${queryParams}`;
-    const response = await fetch(url, { headers: authHeaders() });
+    const response = await fetch(`${API_BASE_URL}/files?${queryParams}`, { headers: authHeaders() });
     return handleResponse(response);
   },
 
