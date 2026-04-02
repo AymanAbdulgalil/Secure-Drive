@@ -31,6 +31,16 @@ function Login() {
             return;
         }
 
+        if (formData.password.length < 8) {
+            setError("Password must be at least 8 characters.");
+            return;
+        }
+
+        if (formData.password.length > 128) {
+            setError("Password is too long.");
+            return;
+        }
+
         setLoading(true);
 
         try {
@@ -49,20 +59,21 @@ function Login() {
 
             if (response.ok) {
                 setToken(data.access_token);
-                
-                // Redirect to dashboard
                 navigate("/dashboard");
+            } else if (response.status === 422) {
+                setError("Invalid email or password format. Please check your input.");
+            } else if (response.status === 500) {
+                setError("Something went wrong on our end. Please try again later.");
             } else {
                 setError(data.detail || "Login failed. Please check your credentials.");
             }
-        } catch (err) {
-            setError("Network error. Please check if the backend is running.");
+        } catch {
+            setError("Network error. Please check your connection.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Handle Enter key press
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
             handleLogin();
