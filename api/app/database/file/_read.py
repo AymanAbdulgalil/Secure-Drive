@@ -45,7 +45,7 @@ async def get_file_meta(
         "SELECT * FROM files WHERE file_id = $1",
         file_id,
     )
-    return File.model_validate(assert_found(row, FileNotFoundError))
+    return File.model_validate(dict(assert_found(row, FileNotFoundError)))
 
 
 async def get_file_meta_by_sha256(
@@ -94,7 +94,7 @@ async def get_file_meta_by_sha256(
             "SELECT * FROM files WHERE sha256_hex = $1 LIMIT 1",
             sha256_hex,
         )
-    return File.model_validate(assert_found(row, FileNotFoundError))
+    return File.model_validate(dict(assert_found(row, FileNotFoundError)))
 
 
 async def get_file_meta_and_bytes(
