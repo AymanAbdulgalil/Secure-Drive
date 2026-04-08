@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import {resolve} from "path";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -7,6 +8,15 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
 
+    build: {
+      rollupOptions: {
+        input: {
+          auth: resolve(__dirname, "auth.html"),
+          dashboard: resolve(__dirname, "dashboard.html"),
+          reset: resolve(__dirname, "reset.html"),
+        },
+      },
+    },
     server: {
       allowedHosts: [env.VITE_DOMAIN],
       proxy: {

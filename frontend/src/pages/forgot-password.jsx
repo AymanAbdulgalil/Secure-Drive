@@ -28,27 +28,17 @@ function ForgotPassword() {
 
         setLoading(true);
 
-        try {
-            // TODO: Replace with actual API call when backend is ready
-            const response = await fetch("/api/v1/auth/forgot-password", {
+            try {
+            await fetch("/api/v1/auth/forgot-password", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
             });
-
-            if (response.ok) {
-                setSuccess("Password reset link sent! Check your email.");
-                setEmail("");
-            } else {
-                const data = await response.json();
-                setError(data.detail || "Failed to send reset link. Please try again.");
-            }
-        } catch (err) {
-            // For now, show success message even if backend not ready
-            setSuccess("Password reset link sent! Check your email.");
+            // Always show neutral message regardless of response — prevents user enumeration
+            setSuccess("If an account exists with that email, you'll receive a reset link shortly.");
             setEmail("");
+        } catch {
+            setError("Network error. Please check your connection and try again.");
         } finally {
             setLoading(false);
         }

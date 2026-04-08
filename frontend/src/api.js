@@ -41,6 +41,7 @@ export const api = {
       method: "POST",
       headers: authHeaders(),
     });
+    if (response.status === 401 || response.ok) return;
     return handleResponse(response);
   },
 
