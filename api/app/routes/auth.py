@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -152,8 +153,16 @@ async def verify_email(
         conn=conn, user_id=user.user_id, verification_version=user.verification_version
     )
 
+    base_url = os.getenv("BASE_URL", "")
+
+    if base_url == "":
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="How did this error even happen... Anyways, please try again later.",
+        )
+
     return HTMLResponse(
-        content='<script>window.location.href="http://localhost:5173/login"</script>'
+        content=f'<script>window.location.href="{base_url}/login?verified=true"</script>'
     )
 
 
