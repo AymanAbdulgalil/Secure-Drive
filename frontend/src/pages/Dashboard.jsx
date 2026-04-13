@@ -239,7 +239,7 @@ function handleMoveFile(file) {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <FileText size={18} color="#1e40af" />
                     <span style={{ fontSize: "0.875rem", color: "#1e40af", fontWeight: 500 }}>
-                    {files.length} files
+                    {storageStats.total_files} files
                     </span>
                 </div>
                 <div style={{ width: "1px", height: "16px", backgroundColor: "#e0e0e0" }} />
