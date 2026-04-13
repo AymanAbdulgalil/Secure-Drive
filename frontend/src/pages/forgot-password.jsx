@@ -29,19 +29,18 @@ function ForgotPassword() {
         setLoading(true);
 
             try {
-            await fetch("/api/v1/auth/forgot-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-            });
-            // Always show neutral message regardless of response — prevents user enumeration
-            setSuccess("If an account exists with that email, you'll receive a reset link shortly.");
-            setEmail("");
-        } catch {
-            setError("Network error. Please check your connection and try again.");
-        } finally {
-            setLoading(false);
-        }
+                const response = await fetch(`/api/v1/auth/forgot-password?email=${encodeURIComponent(email)}`, {
+                    method: "POST",
+                });
+                if (response.ok) {
+                    setSuccess("If an account exists with that email, you'll receive a reset link shortly.");
+                    setEmail("");
+                } else {
+                    setError("Something went wrong. Please try again later.");
+                }
+            } catch {
+                setError("Network error. Please check your connection and try again.");
+            }
     };
 
     const handleKeyPress = (e) => {

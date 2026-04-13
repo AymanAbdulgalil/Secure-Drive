@@ -203,7 +203,7 @@ function handleMoveFile(file) {
         <div style={{
         position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
         display: "flex", height: "100vh",
-        backgroundColor: "#c9c6c6",
+        backgroundColor: "#f0f2f5",
         fontFamily: "system-ui, -apple-system, sans-serif",
         }}>
         <ToastContainer />
@@ -229,9 +229,10 @@ function handleMoveFile(file) {
                 </p>
                 <div style={{
                 padding: "16px",
-                backgroundColor: "#c9c6c6",
+                backgroundColor: "#ffffff",
                 borderRadius: "8px",
-                border: "1px solid #e0e0e0",
+                border: "1px solid #e8eaed",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                 display: "flex",
                 alignItems: "center",
                 gap: "16px",
@@ -273,7 +274,7 @@ function handleMoveFile(file) {
             ) : (
                 <>
                 <FileGrid files={files} />
-                <FileList files={files} nDelete={handleDeleteFile} onRename={handleRenameFile} onMove={handleMoveFile}/>
+                <FileList files={files} onDelete={handleDeleteFile} onRename={handleRenameFile} onMove={handleMoveFile}/>
                 </>
             )}
             </div>

@@ -28,8 +28,8 @@ export default function TopBar({ user, onSearch }) {
 
     return (
         <div style={{
-        backgroundColor: "#c9c6c6",
-        borderBottom: "1px solid #e0e0e0",
+        backgroundColor: "#ffffff",
+        borderBottom: "1px solid #e8eaed",
         padding: "16px 24px",
         display: "flex",
         alignItems: "center",
@@ -38,7 +38,7 @@ export default function TopBar({ user, onSearch }) {
         }}>
         {/* Search bar */}
         <div style={{
-            backgroundColor: "#f5f5f5",
+            backgroundColor: "#f0f2f5",
             borderRadius: "24px",
             padding: "10px 20px",
             display: "flex",
@@ -88,8 +88,9 @@ export default function TopBar({ user, onSearch }) {
                 position: "absolute",
                 right: 0,
                 top: "44px",
-                backgroundColor: "#c9c6c6",
+                backgroundColor: "#ffffff",
                 boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+                border: "1px solid #e8eaed",
                 borderRadius: "12px",
                 padding: "8px",
                 minWidth: "260px",
@@ -101,7 +102,7 @@ export default function TopBar({ user, onSearch }) {
                 padding: "20px",
                 marginBottom: "4px",
                 borderRadius: "10px",
-                backgroundColor: "#EEF2FF",
+                backgroundColor: "#eef2ff",
                 boxShadow: "0 2px 8px rgba(79,70,229,0.15)",
                 }}>
                 <div style={{ fontWeight: 700, fontSize: "1rem", color: "#1a1a2e", marginBottom: "4px" }}>

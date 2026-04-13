@@ -21,14 +21,15 @@ export default function FileGrid({ files }) {
                 style={{
                 padding: "16px",
                 width: "200px",
-                backgroundColor: "white",
-                borderRadius: "8px",
+                backgroundColor: "#ffffff",
+                borderRadius: "12px",
+                border: "1px solid #e8eaed",
                 cursor: "pointer",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
                 transition: "box-shadow 0.2s",
                 }}
-                onMouseOver={(e) => e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)"}
-                onMouseOut={(e) => e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.1)"}
+                onMouseOver={(e) => e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)"}
+                onMouseOut={(e) => e.currentTarget.style.boxShadow = "0 1px 3px rgba(0,0,0,0.06git diff main -- frontend/src/pages/Dashboard.jsx)"}
             >
                 <div style={{ display: "flex", alignItems: "center", marginBottom: "8px" }}>
                 <FileText size={24} color="#666" />

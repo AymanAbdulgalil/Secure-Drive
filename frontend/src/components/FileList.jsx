@@ -88,14 +88,14 @@ export default function FileList({ files, onDelete, onRename, onMove }) {
                 FILES
             </h2>
 
-            <div style={{ backgroundColor: "white", borderRadius: "8px", overflow: "visible" }}>
+            <div style={{ backgroundColor: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.06)",borderRadius: "12px", overflow: "visible" }}>
                 {/* Header */}
                 <div style={{
                     display: "grid",
                     gridTemplateColumns: "2fr 1fr 1fr 1fr",
                     padding: "12px 16px",
-                    backgroundColor: "#fafafa",
-                    borderBottom: "1px solid #e0e0e0",
+                    backgroundColor: "#f8f9fa",
+                    borderBottom: "1px solid #e8eaed",
                 }}>
                     <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999" }}>NAME</span>
                     <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999" }}>TYPE</span>
@@ -113,7 +113,7 @@ export default function FileList({ files, onDelete, onRename, onMove }) {
                             padding: "10px 16px",
                             borderBottom: index < files.length - 1 ? "1px solid #f0f0f0" : "none",
                             alignItems: "center",
-                            backgroundColor: hoveredFile === file.id ? "#f8f8ff" : "transparent",
+                            backgroundColor: hoveredFile === file.id ? "#f8f9ff" : "transparent",
                             transition: "background-color 0.1s",
                         }}
                         onMouseEnter={() => setHoveredFile(file.id)}
@@ -373,11 +373,11 @@ function FileInfoModal({ file, onClose }) {
                         borderRadius: "8px",
                         border: "1px solid #e0e0e0",
                         cursor: "pointer",
-                        backgroundColor: "white",
+                        backgroundColor: "#e0e0e0",
                         fontSize: "0.875rem",
                     }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f5f5f5"}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "white"}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#e0e0e0"}
                 >
                     Close
                 </button>

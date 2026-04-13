@@ -175,7 +175,7 @@ export default function Profile() {
     const passwordStrength = calculateStrength(passwordForm.newPassword);
 
     return (
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#c9c6c6", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", flexDirection: "column", height: "100vh", backgroundColor: "#f0f2f5", fontFamily: "system-ui, -apple-system, sans-serif" }}>
 
             {/* Toast */}
             {toast && (
@@ -198,7 +198,7 @@ export default function Profile() {
             )}
 
             {/* Top Bar */}
-            <div style={{ backgroundColor: "#c9c6c6", borderBottom: "1px solid #e0e0e0", padding: "16px 24px", display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ backgroundColor: "#ffffff", borderBottom: "1px solid #e8eaed", padding: "16px 24px", display: "flex", alignItems: "center", gap: "12px" }}>
                 <div
                     onClick={() => navigate("/dashboard")}
                     style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", color: "#666", fontSize: "0.875rem" }}
@@ -447,7 +447,8 @@ function Card({ children }) {
             backgroundColor: "white",
             borderRadius: "12px",
             padding: "24px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+            border: "1px solid #e8eaed",
         }}>
             {children}
         </div>
