@@ -3,7 +3,7 @@ import { Box, Card, TextField, Button, Typography, Alert, InputAdornment, IconBu
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import Logo from "../assets/logo.svg";
-import { setToken } from "../tokenStore";
+import { setToken, setRefreshToken } from "../tokenStore";
 import { useSearchParams } from "react-router-dom";
 
 function Login() {
@@ -62,6 +62,7 @@ function Login() {
 
             if (response.ok) {
                 setToken(data.access_token);
+                setRefreshToken(data.refresh_token);
                 navigate("/dashboard");
             } else if (response.status === 422) {
                 setError("Invalid email or password format. Please check your input.");
