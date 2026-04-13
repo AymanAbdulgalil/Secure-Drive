@@ -22,8 +22,8 @@ export default function Sidebar({ storageStats, uploading, onUpload }) {
     return (
         <div style={{
         width: "260px",
-        backgroundColor: "#c9c6c6",
-        borderRight: "1px solid #e0e0e0",
+        backgroundColor: "#ffffff",
+        borderRight: "1px solid #e8eaed",
         display: "flex",
         flexDirection: "column",
         padding: "16px",
@@ -81,8 +81,8 @@ export default function Sidebar({ storageStats, uploading, onUpload }) {
                     borderRadius: "8px",
                     cursor: item.path ? "pointer" : "default",
                     marginBottom: "4px",
-                    border: active ? "1px solid #e0e0e0" : "1px solid transparent",
-                    backgroundColor: active ? "#e0e0e0" : "transparent",
+                    border: active ? "1px solid #e0e7ff" : "1px solid transparent",
+                    backgroundColor: active ? "#eef2ff" : "transparent",
                     color: active ? "#4F46E5" : "#666",
                 }}
                 onMouseOver={(e) => {
@@ -108,12 +108,12 @@ export default function Sidebar({ storageStats, uploading, onUpload }) {
         </div>
     
         {/* Storage indicator */}
-        <div style={{ padding: "16px", backgroundColor: "#f9fafb", borderRadius: "8px" }}>
+        <div style={{ padding: "16px", backgroundColor: "#f8f9fa", borderRadius: "8px" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: "8px", gap: "8px" }}>
             <HardDrive size={16} color="#666" />
             <span style={{ fontSize: "0.875rem", color: "#666" }}>Storage</span>
             </div>
-            <div style={{ width: "100%", height: "6px", backgroundColor: "#c9c6c6", borderRadius: "4px", marginBottom: "8px" }}>
+            <div style={{ width: "100%", height: "6px", backgroundColor: "#e8eaed", borderRadius: "4px", marginBottom: "8px" }}>
             <div style={{
                 width: `${storagePercentage}%`,
                 height: "100%",
