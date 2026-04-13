@@ -273,7 +273,7 @@ function handleMoveFile(file) {
             ) : (
                 <>
                 <FileGrid files={files} />
-                <FileList files={files} nDelete={handleDeleteFile} onRename={handleRenameFile} onMove={handleMoveFile}/>
+                <FileList files={files} onDelete={handleDeleteFile} onRename={handleRenameFile} onMove={handleMoveFile}/>
                 </>
             )}
             </div>
