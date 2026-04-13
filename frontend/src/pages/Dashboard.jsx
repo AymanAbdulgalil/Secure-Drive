@@ -99,6 +99,22 @@ export default function Dashboard() {
         await loadStorageStats();
     }
 
+    async function handleRenameFile(fileId, newName) {
+        const formData = new FormData();
+        formData.append('name', newName);
+        const response = await fetch(`/api/v1/files/${fileId}`, {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${getToken()}` },
+            body: formData,
+        });
+        if (!response.ok) throw new Error();
+        await loadFiles();
+    }
+
+function handleMoveFile(file) {
+    toast('Move to — coming soon.', 'success');
+}
+
     function handleReportIssue() {
         setShowConsentPrompt(true);
     }
@@ -257,7 +273,7 @@ export default function Dashboard() {
             ) : (
                 <>
                 <FileGrid files={files} />
-                <FileList files={files} onDelete={handleDeleteFile} />
+                <FileList files={files} nDelete={handleDeleteFile} onRename={handleRenameFile} onMove={handleMoveFile}/>
                 </>
             )}
             </div>
