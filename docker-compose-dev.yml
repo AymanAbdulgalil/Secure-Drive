@@ -64,6 +64,7 @@ services:
       - .env.dev
     environment:
       - VITE_API_URL=http://api:8000
+      - VITE_AUTH_URL=http://auth:8001
       - CHOKIDAR_USEPOLLING=true
       - CHOKIDAR_INTERVAL=1000 
     command: npm run dev -- --host 0.0.0.0

@@ -1,6 +1,10 @@
 import { getToken, clearToken, getRefreshToken, setToken } from "./tokenStore";
 
-const API_BASE_URL = '/api/v1';
+// Relative paths — Vite proxy handles routing to the right service
+// /auth-api/* → auth service (port 8001)
+// /api/*      → core service (port 8000)
+const AUTH_BASE = '/auth-api/api/v1';
+const CORE_BASE = '/api/v1';
 
 let _isRefreshing = false;
 let _failedQueue = [];
@@ -32,7 +36,6 @@ async function handleResponse(response, retryFn = null) {
         }
 
         if (_isRefreshing) {
-            // Another request is already refreshing, queue this one
             return new Promise((resolve, reject) => {
                 _failedQueue.push({ resolve, reject });
             }).then((token) => {
@@ -43,7 +46,7 @@ async function handleResponse(response, retryFn = null) {
         _isRefreshing = true;
 
         try {
-            const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            const res = await fetch(`${AUTH_BASE}/auth/refresh`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ refresh_token: refreshToken }),
@@ -63,8 +66,6 @@ async function handleResponse(response, retryFn = null) {
                 setRefreshToken(data.refresh_token);
             }
             processQueue(null, data.access_token);
-
-            // Retry the original request
             if (retryFn) return retryFn(data.access_token);
 
         } catch (err) {
@@ -93,21 +94,91 @@ async function handleResponse(response, retryFn = null) {
 }
 
 export const api = {
+    // ── Auth ──────────────────────────────────────────────────────────────────
+
+    async login(email, password) {
+        const response = await fetch(`${AUTH_BASE}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+        return handleResponse(response);
+    },
+
+    async register(name, email, password) {
+        const response = await fetch(`${AUTH_BASE}/auth/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password }),
+        });
+        return handleResponse(response);
+    },
+
+    async resendVerification(email) {
+        const response = await fetch(
+            `${AUTH_BASE}/auth/resend-verification?email=${encodeURIComponent(email)}`,
+            { method: "POST" }
+        );
+        return handleResponse(response);
+    },
+
+    async forgotPassword(email) {
+        const response = await fetch(
+            `${AUTH_BASE}/auth/forgot-password?email=${encodeURIComponent(email)}`,
+            { method: "POST" }
+        );
+        return handleResponse(response);
+    },
+
+    async validateResetToken(token) {
+        const response = await fetch(`${AUTH_BASE}/auth/reset-password/${token}`);
+        return handleResponse(response);
+    },
+
+    async resetPassword(email, newPassword) {
+        const response = await fetch(`${AUTH_BASE}/auth/reset-password`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, new_password: newPassword }),
+        });
+        return handleResponse(response);
+    },
+
     async getMe() {
-        const response = await fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders() });
+        const response = await fetch(`${AUTH_BASE}/auth/me`, { headers: authHeaders() });
         return handleResponse(response, (token) =>
-            fetch(`${API_BASE_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+            fetch(`${AUTH_BASE}/auth/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         );
     },
 
+    async updateName(name) {
+        const response = await fetch(`${AUTH_BASE}/auth/me`, {
+            method: "PATCH",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ name }),
+        });
+        return handleResponse(response);
+    },
+
+    async changePassword(currentPassword, newPassword) {
+        const response = await fetch(`${AUTH_BASE}/auth/me/password`, {
+            method: "PATCH",
+            headers: authHeaders({ "Content-Type": "application/json" }),
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+        });
+        return handleResponse(response);
+    },
+
     async logout() {
-        const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+        const response = await fetch(`${AUTH_BASE}/auth/logout`, {
             method: "POST",
             headers: authHeaders(),
         });
         if (response.status === 401 || response.ok) return;
         return handleResponse(response);
     },
+
+    // ── Files ─────────────────────────────────────────────────────────────────
 
     async getFiles(params = {}) {
         const queryParams = new URLSearchParams();
@@ -118,16 +189,16 @@ export const api = {
         if (params.limit) queryParams.append('limit', params.limit);
         if (params.offset) queryParams.append('offset', params.offset);
 
-        const response = await fetch(`${API_BASE_URL}/files?${queryParams}`, { headers: authHeaders() });
+        const response = await fetch(`${CORE_BASE}/files?${queryParams}`, { headers: authHeaders() });
         return handleResponse(response, (token) =>
-            fetch(`${API_BASE_URL}/files?${queryParams}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+            fetch(`${CORE_BASE}/files?${queryParams}`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         );
     },
 
     async getStorageStats() {
-        const response = await fetch(`${API_BASE_URL}/files/stats`, { headers: authHeaders() });
+        const response = await fetch(`${CORE_BASE}/files/stats`, { headers: authHeaders() });
         return handleResponse(response, (token) =>
-            fetch(`${API_BASE_URL}/files/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+            fetch(`${CORE_BASE}/files/stats`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         );
     },
 
@@ -137,7 +208,7 @@ export const api = {
         if (folder) formData.append('folder', folder);
         if (logicalName) formData.append('logical_name', logicalName);
 
-        const response = await fetch(`${API_BASE_URL}/files`, {
+        const response = await fetch(`${CORE_BASE}/files`, {
             method: 'POST',
             headers: authHeaders(),
             body: formData,
@@ -146,7 +217,7 @@ export const api = {
     },
 
     async deleteFile(fileId) {
-        const response = await fetch(`${API_BASE_URL}/files/${fileId}`, {
+        const response = await fetch(`${CORE_BASE}/files/${fileId}`, {
             method: 'DELETE',
             headers: authHeaders(),
         });
@@ -154,6 +225,6 @@ export const api = {
     },
 
     getDownloadUrl(fileId) {
-        return `${API_BASE_URL}/files/${fileId}`;
+        return `${CORE_BASE}/files/${fileId}`;
     },
 };

@@ -3,23 +3,22 @@ import { Box, Card, TextField, Button, Typography, Alert, LinearProgress, InputA
 import { useNavigate, useParams } from "react-router-dom";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import Logo from "../assets/logo.svg";
+import { api } from "../api";
 
 function ResetPassword() {
     const navigate = useNavigate();
     const { token } = useParams();
 
-    const [tokenValid, setTokenValid] = useState(null); // null=checking, true=valid, false=invalid
+    const [tokenValid, setTokenValid] = useState(null);
     const [tokenError, setTokenError] = useState("");
-    const [formData, setFormData] = useState({ password: "", confirmPassword: "" });
+    const [formData, setFormData] = useState({ email: "", password: "", confirmPassword: "" });
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-    // Validate token on load
     useEffect(() => {
-        // Client-side check — if no token, don't even call the API
         if (!token || token.length < 10) {
             setTokenValid(false);
             setTokenError("Invalid or missing reset token.");
@@ -28,19 +27,11 @@ function ResetPassword() {
 
         const validateToken = async () => {
             try {
-                const response = await fetch(`/api/v1/auth/reset-password/${token}`);
-                if (response.ok) {
-                    setTokenValid(true);
-                } else if (response.status === 401) {
-                    setTokenValid(false);
-                    setTokenError("This reset link has expired.");
-                } else {
-                    setTokenValid(false);
-                    setTokenError("This reset link is invalid or has already been used.");
-                }
-            } catch {
+                await api.validateResetToken(token);
+                setTokenValid(true);
+            } catch (err) {
                 setTokenValid(false);
-                setTokenError("Network error. Please check your connection.");
+                setTokenError(err.message || "This reset link is invalid or has already been used.");
             }
         };
 
@@ -88,50 +79,40 @@ function ResetPassword() {
         setError("");
         setSuccess("");
 
+        if (!formData.email) {
+            setError("Please enter your email address");
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            setError("Please enter a valid email address");
+            return;
+        }
         if (!formData.password || !formData.confirmPassword) {
             setError("Please fill in all fields");
             return;
         }
-
         const passwordErrors = validatePassword(formData.password);
         if (passwordErrors.length > 0) {
             setError("Password requirements:\n• " + passwordErrors.join("\n• "));
             return;
         }
-
         if (formData.password !== formData.confirmPassword) {
             setError("Passwords do not match");
             return;
         }
 
         setLoading(true);
-
         try {
-            const response = await fetch("/api/v1/auth/reset-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                // Token is NOT sent in body — backend reads it from path context
-                body: JSON.stringify({ new_password: formData.password }),
-            });
-
-            if (response.ok) {
-                setSuccess("Password reset successful! Redirecting to login...");
-                setTimeout(() => navigate("/login"), 2000);
-            } else if (response.status === 401) {
-                setError("This reset link has expired. Please request a new one.");
-            } else if (response.status === 400) {
-                setError("This reset link has already been used. Please request a new one.");
-            } else {
-                setError("Something went wrong. Please try again.");
-            }
-        } catch {
-            setError("Network error. Please check your connection.");
+            await api.resetPassword(formData.email, formData.password);
+            setSuccess("Password reset successful! Redirecting to login...");
+            setTimeout(() => navigate("/login"), 2000);
+        } catch (err) {
+            setError(err.message || "Something went wrong. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
-    // Loading state while validating token
     if (tokenValid === null) {
         return (
             <Card sx={{ width: 420, padding: 7, borderRadius: 3, backgroundColor: "#ffffff", boxShadow: "0px 10px 40px rgba(0,0,0,0.3)", textAlign: "center" }}>
@@ -140,7 +121,6 @@ function ResetPassword() {
         );
     }
 
-    // Invalid token state
     if (tokenValid === false) {
         return (
             <Card sx={{ width: 420, padding: 7, borderRadius: 3, backgroundColor: "#ffffff", boxShadow: "0px 10px 40px rgba(0,0,0,0.3)", textAlign: "center" }}>
@@ -158,7 +138,6 @@ function ResetPassword() {
         );
     }
 
-    // Valid token — show the form
     return (
         <Card sx={{ width: 420, padding: 7, borderRadius: 3, backgroundColor: "#ffffff", boxShadow: "0px 10px 40px rgba(0,0,0,0.3)", textAlign: "center" }}>
             <Box display="flex" alignItems="center" flexDirection="column" mb={2}>
@@ -167,18 +146,23 @@ function ResetPassword() {
             </Box>
             <Box display="flex" alignItems="center" flexDirection="column" mb={2}>
                 <Typography variant="h3" fontWeight={700} sx={{ fontSize: "1.3rem" }}>Reset Password</Typography>
-                <Typography variant="body2" sx={{ color: "#666", mt: 1 }}>Enter your new password</Typography>
+                <Typography variant="body2" sx={{ color: "#666", mt: 1 }}>Enter your email and new password</Typography>
             </Box>
 
             {error && <Alert severity="error" sx={{ mb: 2, textAlign: "left", whiteSpace: "pre-line" }}>{error}</Alert>}
             {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
+            {/* Email field — needed to identify the account */}
+            <Box mb={2} textAlign="left">
+                <Typography variant="body2" mb={0.5}>Email</Typography>
+                <TextField fullWidth size="small" type="email" placeholder="Enter your email address"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+            </Box>
+
             <Box mb={1} textAlign="left">
                 <Typography variant="body2" mb={0.5}>New Password</Typography>
-                <TextField
-                    fullWidth size="small"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter new password"
+                <TextField fullWidth size="small" type={showPassword ? "text" : "password"} placeholder="Enter new password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     InputProps={{
@@ -201,23 +185,15 @@ function ResetPassword() {
                             {getStrengthLabel(passwordStrength.strength)}
                         </Typography>
                     </Box>
-                    <LinearProgress
-                        variant="determinate"
-                        value={(passwordStrength.strength / 5) * 100}
-                        sx={{
-                            height: 6, borderRadius: 3, backgroundColor: "#e5e7eb",
-                            "& .MuiLinearProgress-bar": { backgroundColor: getStrengthColor(passwordStrength.strength), borderRadius: 3 }
-                        }}
+                    <LinearProgress variant="determinate" value={(passwordStrength.strength / 5) * 100}
+                        sx={{ height: 6, borderRadius: 3, backgroundColor: "#e5e7eb", "& .MuiLinearProgress-bar": { backgroundColor: getStrengthColor(passwordStrength.strength), borderRadius: 3 } }}
                     />
                 </Box>
             )}
 
             <Box mb={3} textAlign="left">
                 <Typography variant="body2" mb={0.5}>Confirm Password</Typography>
-                <TextField
-                    fullWidth size="small"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm new password"
+                <TextField fullWidth size="small" type={showConfirmPassword ? "text" : "password"} placeholder="Confirm new password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     InputProps={{
@@ -232,12 +208,8 @@ function ResetPassword() {
                 />
             </Box>
 
-            <Button
-                fullWidth variant="contained"
-                onClick={handleSubmit}
-                disabled={loading}
-                sx={{ backgroundColor: "#4F46E5", borderRadius: 2, textTransform: "none", fontWeight: 500, py: 1, mb: 2 }}
-            >
+            <Button fullWidth variant="contained" onClick={handleSubmit} disabled={loading}
+                sx={{ backgroundColor: "#4F46E5", borderRadius: 2, textTransform: "none", fontWeight: 500, py: 1, mb: 2 }}>
                 {loading ? "Resetting..." : "Reset Password"}
             </Button>
 
