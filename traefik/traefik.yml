@@ -1,0 +1,14 @@
+api:
+  dashboard: false        # enable only locally if needed, never expose in prod
+
+entryPoints:
+  web:
+    address: ":80"        # Traefik listens internally; cloudflared talks to this
+
+providers:
+  docker:
+    exposedByDefault: false   # opt-in labeling — services not labeled are invisible
+    network: sd_internal
+
+log:
+  level: WARNING

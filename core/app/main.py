@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from .routes.auth import router as auth_router
 from .routes.files import router as files_router
 
 
@@ -30,10 +29,7 @@ async def lifespan(app: FastAPI):
     await app.state.pool.close()
 
 
-app = FastAPI(title="Secure Drive", lifespan=lifespan)
-
-app.include_router(auth_router, prefix="/api/v1")
-app.include_router(files_router, prefix="/api/v1")
+app = FastAPI(title="Secure Drive — Core", lifespan=lifespan)
 
 if os.environ.get("SERVE_FRONTEND", "0") == "1":
     dist_dir = os.environ.get("FRONTEND_DIST", "")
@@ -56,4 +52,5 @@ else:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    pass
+
+app.include_router(files_router, prefix="/api/v1")

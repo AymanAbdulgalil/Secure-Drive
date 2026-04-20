@@ -1,11 +1,9 @@
-import re
 import base64
-from typing import Annotated
+import re
 from pathlib import PurePosixPath
-from pydantic import TypeAdapter, EmailStr
-from pydantic.functional_validators import AfterValidator
-from pydantic.networks import IPvAnyAddress
+from typing import Annotated
 
+from pydantic.functional_validators import AfterValidator
 
 _BUCKET_NAME_RE = re.compile(r"^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$")
 _IP_ADDRESS_RE = re.compile(r"^\d+\.\d+\.\d+\.\d+$")
@@ -38,26 +36,6 @@ def _validate_mime(value: str) -> str:
     return value.lower()
 
 
-def _validate_hex(value: str) -> str:
-    if not all(c in "0123456789abcdefABCDEF" for c in value):
-        raise ValueError(
-            f"'{value}' is not a valid hex string. It contains illegal characters."
-        )
-    if len(value) != 64:
-        raise ValueError(
-            f"'{value}' is not a valid hex string. It's not 64 characters long."
-        )
-    return value.lower()
-
-
-def _validate_email(value: str) -> str:
-    try:
-        TypeAdapter(EmailStr).validate_python(value)
-    except Exception as exc:
-        raise ValueError(f"'{value}' is not a valid email string") from exc
-    return value.lower()
-
-
 def _validate_logical_path(value: PurePosixPath) -> PurePosixPath:
     if not value.is_absolute():
         raise ValueError(f"'{value}' is not an absolute path")
@@ -76,9 +54,20 @@ def validate_base64(v: str) -> str:
         raise ValueError("Invalid base64 string")
 
 
+def _validate_hex(value: str) -> str:
+    if not all(c in "0123456789abcdefABCDEF" for c in value):
+        raise ValueError(
+            f"'{value}' is not a valid hex string. It contains illegal characters."
+        )
+    if len(value) != 64:
+        raise ValueError(
+            f"'{value}' is not a valid hex string. It's not 64 characters long."
+        )
+    return value.lower()
+
+
 Bucket = Annotated[str, AfterValidator(_validate_bucket_name)]
 MimeType = Annotated[str, AfterValidator(_validate_mime)]
-SHA256Hex = Annotated[str, AfterValidator(_validate_hex)]
-Email = Annotated[str, AfterValidator(_validate_email)]
 LogicalPath = Annotated[PurePosixPath, AfterValidator(_validate_logical_path)]
 Base64Str = Annotated[str, AfterValidator(validate_base64)]
+SHA256Hex = Annotated[str, AfterValidator(_validate_hex)]

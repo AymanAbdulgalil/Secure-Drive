@@ -4,9 +4,6 @@ minio
 
 fastapi
 pyjwt
-argon2-cffi
 pydantic[email]
-itsdangerous
-aiosmtplib
 python-multipart
 uvicorn[standard]

@@ -12,13 +12,14 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Stage 2: Development
 # ============================================
 FROM base AS development
-
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# app code is bind-mounted in dev; no COPY needed
 
 # ============================================
 # Stage 3: Production
 # ============================================
 FROM base AS production
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+COPY . .
+
+# CMD is specified per-service in docker-compose so this Dockerfile
+# is reusable for both auth and core without modification.

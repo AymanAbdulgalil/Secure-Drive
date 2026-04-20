@@ -1,77 +1,141 @@
 services:
+
+  # ── Infrastructure ──────────────────────────────────────────────
+
+  traefik:
+    image: traefik:v3.3
+    container_name: SD-traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+    networks:
+      - sd_internal
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: SD-cloudflared
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    networks:
+      - sd_internal
+    depends_on:
+      - traefik
+    restart: unless-stopped
+
+  # ── Data layer ───────────────────────────────────────────────────
+
   postgres:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: SD-pgdb
-    env_file:
-      - .env.prod
+    env_file: .env.prod
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./ini:/docker-entrypoint-initdb.d:ro
+    networks:
+      - sd_internal
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 10s
-    restart: unless-stopped
-    networks:
-      - main
 
   minio:
     image: minio/minio:latest
     container_name: SD-minio
     command: server /data --console-address ":9001"
-    ports:
-      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
-    env_file:
-      - .env.prod
-    healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-    restart: unless-stopped
+    env_file: .env.prod
     networks:
-      - main
+      - sd_internal
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  api:
+  # ── Application layer ────────────────────────────────────────────
+
+  auth:
     build:
-      context: ./api
+      context: ./auth
       dockerfile: Dockerfile
-      target: production
-    container_name: SD-api
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-    ports:
-      - "${API_PORT:-8000}:8000"
-    env_file:
-      - .env.prod
+      target: development
+    container_name: SD-auth
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    env_file: .env.prod
     volumes:
+      - ./auth:/app
+    networks:
+      - sd_internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Route: /auth/* → auth service
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.services.auth.loadbalancer.server.port=8001"
+      # The /auth/verify route must NOT self-protect (infinite loop)
+      # so we strip it from the forwardauth middleware via a separate router:
+      - "traefik.http.routers.auth-verify.rule=Path(`/auth/verify`)"
+      - "traefik.http.routers.auth-verify.entrypoints=web"
+      - "traefik.http.routers.auth-verify.priority=10"   # higher = matched first
+
+  core:
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+      target: development
+    container_name: SD-core
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    env_file: .env.prod
+    volumes:
+      - ./core:/app
       - ./frontend/dist:/frontend/dist:ro
+    networks:
+      - sd_internal
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
+      auth:
+        condition: service_started
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.core.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.core.entrypoints=web"
+      - "traefik.http.services.core.loadbalancer.server.port=8000"
+      # Apply auth middleware to all /api routes
+      - "traefik.http.routers.core.middlewares=forward-auth@docker"
+      # ForwardAuth middleware definition (defined once, referenced anywhere)
+      - "traefik.http.middlewares.forward-auth.forwardauth.address=http://auth:8001/auth/verify"
+      - "traefik.http.middlewares.forward-auth.forwardauth.authResponseHeaders=X-User-Id,X-User-Role"
+
+  frontend:
+    image: nginx:alpine
+    container_name: SD-frontend
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
     networks:
-      - main
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
+      - sd_internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+
+networks:
+  sd_internal:
+    driver: bridge
 
 volumes:
   postgres_data:
   minio_data:
-
-
-networks:
-  main:
-    driver: bridge

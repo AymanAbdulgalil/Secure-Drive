@@ -1,0 +1,9 @@
+asyncpg
+
+fastapi
+pyjwt
+argon2-cffi
+pydantic[email]
+itsdangerous
+aiosmtplib
+uvicorn[standard]
