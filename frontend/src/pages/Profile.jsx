@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from "../assets/logo.svg";
 import { ArrowLeft, Key, HardDrive } from 'lucide-react';
-import { getToken, clearToken } from "../tokenStore";
+import { clearToken } from "../tokenStore";
 import { api } from "../api";
 
 export default function Profile() {
@@ -83,23 +83,10 @@ export default function Profile() {
         }
         setNameSaving(true);
         try {
-            const token = getToken();
-            const response = await fetch("/api/v1/auth/me", {
-                method: "PATCH",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ name: newName.trim() })
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setUser(data);
-                setEditing(false);
-                showToast("Name updated successfully.");
-            } else {
-                showToast("Failed to update name. Please try again.", "error");
-            }
+            const data = await api.updateName(newName.trim());
+            setUser(data);
+            setEditing(false);
+            showToast("Name updated successfully.");
         } catch {
             showToast("Network error. Please try again.", "error");
         } finally {
@@ -133,26 +120,9 @@ export default function Profile() {
 
         setPasswordLoading(true);
         try {
-            const token = getToken();
-            const response = await fetch("/api/v1/auth/me/password", {
-                method: "PATCH",
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    current_password: currentPassword,
-                    new_password: newPassword,
-                })
-            });
-            if (response.ok) {
-                showToast("Password changed successfully.");
-                setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
-            } else if (response.status === 401) {
-                showToast("Current password is incorrect.", "error");
-            } else {
-                showToast("Failed to change password. Please try again.", "error");
-            }
+            await api.changePassword(currentPassword, newPassword);
+            showToast("Password changed successfully.");
+            setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
         } catch {
             showToast("Network error. Please try again.", "error");
         } finally {
